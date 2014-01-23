@@ -1,0 +1,53 @@
+Constraints:
+	- SLOW salvo construction
+	- Cost based optimization
+	- Do not collide with neighoring construction sides
+	- Do not collide with allready build upships
+	- Do not emmit gliders or *WSS in unwanted directions
+	- Emmit *WSS as close to the "far" edge as possible
+	- gliders mus be able to reach the reaction!
+
+Assumptions and definitions:
+	- we need a name for that ship-to-construct
+	- ship-to-construct is moving "up" with speed dx in dt generations.
+	- For now: dy = 0
+	- resulting *WSS should be moving up, also.
+	- the construction rakes are moving with the speed of ship-to-construct (dx c / dt)
+	- dx cells above each construction site is a copy wich is one step behind the current site.
+	- dx cells below each construction site is a copy with is one step ahead of the current one.
+	- We are only interested in still lifes and p2 resulst (appart of our *WSSs).
+	- Since we are only looking at a relativly small reaction site, generating the pattern is very cheap.
+	  => Generating extra generations is cheaper then pattern matching.
+
+TO CHECK:
+	- Does it pay off, if we allow non-colliding overlaps between sites?
+	- Are cases interesting were the next glider has to move thru a neighbouring site?
+	- Should we allow slow reactions, which take longer then dt to settle?
+
+Base Alg.:
+	- Maintain an ordered list of reactions:
+		- int cost
+		- pattern start
+		- pattern bullet
+		- int lane
+		- traceback
+	- Define a list of starting patterns
+	- Define a list of "bullets" to aim at the construction site
+	- Iniatlize reactions with "any collision of a starting pattern with any bullet on any lane"; cost = 0, traceback = NULL
+	- While not empty (reactions)
+		- Take r = front (reactions)
+			- collide start with bullet on lane
+			- iterate dt generations -> result []
+			- check for collisions with neighbor -> skip-to-next-reaction
+			- check for width > max(dy) -> skip-to-next-reaction
+			- check for empty -> skip-to-next-reaction
+			- check for escaping "bad ship" -> skip-to-next-reaction
+			- check for "edge shooted ship" -> print_out (traceback, lane, bullet, result [dt]), skip-to-next-reaction
+			- check for known (result  [dt], lane, bullet) -> skip-to-next-reaction
+			- print_reaction (start, lane, bullet, result [dt], cost)
+			- check for not settled (result) -> skip-to-next-reaction
+			-> for all relevant (lanes, bullet) as (nl, nb):
+				- calculate cost for nl as nc
+				- insert (reactions, cost + nc, result [dt], nb, nl, append (r.traceback, r))
+				- is_p2 (result):
+					-> insert (reactions, cost + nc, result [dt-1], nb, nl, append (r.traceback, r))
