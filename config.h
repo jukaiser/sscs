@@ -11,6 +11,12 @@
    (Something like MAXWIDTH*MAXHEIGHT*(MAXGEN+2) int's are needed for the evaluation of any reaction).
    The calculation is clipped to the active area of the reaction.
 */
-#define MAXWIDTH 64
+#define MAXWIDTH 128
 #define MAXHEIGHT 64
 #define MAXGEN	256
+
+
+// Max size of an RLE for any given pattern.
+#define MAX_RLE 4096
+// #define MAX_FIND 100	
+
