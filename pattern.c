@@ -12,15 +12,12 @@
 #define ALLOC(t,arr,n)  {arr = (t *)calloc (n, sizeof (t)); if (!arr) {fprintf (stderr, "calloc () failed!\n"); exit (2);}}
 //#define ALLOC(t,arr,n)        {arr = (t *)calloc (n, sizeof (t)); if (!arr) {fprintf (stderr, "calloc () failed!\n"); exit (2);} else printf ("%p -> %ld\n", arr, n * sizeof (t));}
 
-#define W(p)    ((p)->right-(p)->left+1)
-#define H(p)    ((p)->bottom-(p)->top+1)
-
 
 pattern *lab = NULL;
 int maxX, maxY, maxGen;
 
 static pattern *temp = NULL;
-static char rle [MAX_RLE];
+static char *rle = NULL;
 
 
 void pat_init (pattern *p)
@@ -284,7 +281,6 @@ void pat_add (pattern *p1, int offX, int offY, pattern *p2)
       return;
     }
 
-printf ("%d, %d, %d\n", offY, p2->bottom, p1->sizeY); fflush (stdout);
   assert (offY + p2->bottom < p1->sizeY);
   assert (offX + p2->right < p1->sizeX);
 
@@ -452,7 +448,7 @@ void pat_from_string (pattern *pat, const char *str)
 
 {
   int  x = 1, y = 1, count = 0, maxX = 1;
-  bool rle = false;
+  bool isrle = false;
   char dCell, lCell, newLine, endPat;
   const char *cp = str;
 
@@ -487,7 +483,7 @@ void pat_from_string (pattern *pat, const char *str)
 	}
       else if (*cp == 'x')
 	{
-	  rle = true;
+	  isrle = true;
 	  dCell = 'b';
 	  lCell = 'o';
 	  newLine = '$';
@@ -504,7 +500,7 @@ void pat_from_string (pattern *pat, const char *str)
     }
 
   // Here: we are at the first non garbage char
-  if (!rle)
+  if (!isrle)
     {
       if (*cp == '.' || *cp == '*')
 	{
@@ -523,7 +519,7 @@ void pat_from_string (pattern *pat, const char *str)
 	}
       else
 	{
-	  rle = true;
+	  isrle = true;
 	  dCell = 'b';
 	  lCell = 'o';
 	  newLine = '$';
@@ -534,7 +530,7 @@ void pat_from_string (pattern *pat, const char *str)
   // now for the pattern itself ...
   while (*cp)
     {
-      if (rle && isdigit (*cp))
+      if (isrle && isdigit (*cp))
 	count = count*10 + *cp - '0';
       else if (*cp == dCell || *cp == lCell)
 	{
@@ -607,7 +603,8 @@ void pat_load (pattern *pat, FILE *f)
   */
   while (!feof (f) && !ferror (f))
     {
-      fgets (buffer, MAX_RLE, f);
+      if (!fgets (buffer, MAX_RLE, f))
+	break;
       if (buffer [0] != '#' && buffer [0] != '\n' && !is_empty (buffer))
 	break;
     }
@@ -621,7 +618,8 @@ void pat_load (pattern *pat, FILE *f)
   pos = buffer + strlen (buffer);
   while (!strchr (pos, '!') && !feof (f) && !ferror (f))
     {
-      fgets (pos, size_left, f);
+      if (!fgets (pos, size_left, f))
+	break;
       if (is_empty (pos))
 	break;
       size_left -= strlen (pos);
@@ -684,6 +682,16 @@ b2o$obo$2bo!
 {
   int x, y, run, pos = 0, nr_lf = 0;
   char current;
+
+  // make sure rle is initialized
+  if (!rle)
+    rle = malloc (MAX_RLE);
+  if (!rle)
+    {
+      perror ("pat_rle () - malloc ()");
+      exit (1);
+    }
+  
 
   for (y = pat->top; y <= pat->bottom; y++)
     {

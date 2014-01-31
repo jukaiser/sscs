@@ -1,9 +1,10 @@
 /* parse a simple .cfg file to a set of global parameters */
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
+
+#include "config.h"
 
 
 // -> config.h!
@@ -14,7 +15,7 @@ int   MAXHEIGHT	  = 64;
 int   MAXGEN	  = 256;
 int   MAXPERIOD   = 2;
 int   MAX_RLE	  = 4096;
-char *BULLET	  = "glider_se.pat";
+char *BULLET	  = "glider_se_31_lanes";
 char *START	  = "start-targets.pat";
 int   MAX_FIND	  = 100;
 bool  SHIPMODE    = true;
@@ -23,17 +24,14 @@ int   DY	  = 0;
 int   DT	  = 240;
 int   FACTOR	  = 1;
 int   LANES	  = 31;
-char *DBNAME	  = "gol";
-char *DBUSER	  = "gol";
-char *DBPASSWD    = "";
-char *TABREACTION = "reaction";
-char *TABTARGET	  = "target";
-char *TABRESULT   = "result";
-char *TABESCAPING = "escaping";
 bool  RELATIVE    = true;
 int  *COSTS	  = NULL;
 int  nCOSTS	  = 0;
-
+char *DBHOST	  = "localhost";
+int   DBPORT	  = 3306;
+char *DBNAME	  = "gol";
+char *DBUSER	  = "gol";
+char *DBPASSWD    = "";
 
 // <- config.h
 
@@ -64,15 +62,13 @@ static cfg_var config [] =
     {"DT",	    NUM,     &DT},
     {"FACTOR",	    NUM,     &FACTOR},
     {"LANES",	    NUM,     &LANES},
+    {"RELATIVE",    BOOL,    &RELATIVE},
+    {"COSTS",	    N_ARRAY, &COSTS, &nCOSTS},
+    {"DBHOST",	    STRING,  &DBHOST},
+    {"DBPORT",	    NUM,     &DBPORT},
     {"DBNAME",	    STRING,  &DBNAME},
     {"DBUSER",	    STRING,  &DBUSER},
     {"DBPASSWD",    STRING,  &DBPASSWD},
-    {"TABREACTION", STRING,  &TABREACTION},
-    {"TABTARGET",   STRING,  &TABTARGET},
-    {"TABRESULT",   STRING,  &TABRESULT},
-    {"TABESCAPING", STRING,  &TABESCAPING},
-    {"RELATIVE",    BOOL,    &RELATIVE},
-    {"COSTS",	    N_ARRAY, &COSTS, &nCOSTS},
     {NULL}
   };
 
@@ -181,6 +177,60 @@ static void handle_array (const char *var, int **v_ptr, int *n_ptr, char *val)
 
 {
   char *end;
+
+  // special case: cost vector might be defined by '[' step '%' nLanes ']'
+  // Idea: there is only one way to change lanes, and step is defining the step size of those changes.
+  // So to reach line N you have to find an k <= nLanes with N = (k * step) % nLanes
+  // Since you need k steps to reach the new lane, that is our cost ;)
+  if (*val == '[')
+    {
+      int step, nLanes, k;
+
+      step = strtol (val+1, &val, 0);
+      if (step <= 0)
+	{
+	  fprintf (stderr, "config: Variable '%s': illeagal use of [9 %% 31] notation ->%s!\n", var, val);
+	  return;
+	}
+      val = skip_ws (val);
+
+      // We expect an '%' here!
+      if (*val != '%')
+	{
+	  fprintf (stderr, "config: Variable '%s': illeagal use of [9 %% 31] notation ->%s!\n", var, val);
+	  return;
+	}
+
+      nLanes = strtol (val+1, &val, 0);
+      if (nLanes <= step)
+	{
+	  fprintf (stderr, "config: Variable '%s': illeagal use of [9 %% 31] notation ->%s!\n", var, val);
+	  return;
+	}
+      val = skip_ws (val);
+
+      // We expect an ']' here!
+      if (*val != ']')
+	{
+	  fprintf (stderr, "config: Variable '%s': illeagal use of [9 %% 31] notation ->%s!\n", var, val);
+	  return;
+	}
+      if (val [1])
+	fprintf (stderr, "config: Variable '%s': ignoring trailing garbage ('%s')!\n", var, val+1);
+
+      // Ok ... parsing was successful!
+      *v_ptr = calloc (nLanes, sizeof (int));
+      if (!*v_ptr)
+	{
+	  perror ("config::handle_array() - calloc");
+	  exit (1);
+	}
+      for (k = 1; k <= nLanes; k++)
+	(*v_ptr) [(k*step)%nLanes] = k;
+      *n_ptr = nLanes;
+
+      return;
+    }
 
   // hard to know how many elements we'll end up with. Better safe then sorry ...
   // since we need atleast one WS between to values 1+strlen()/2 should be fine.
@@ -293,23 +343,4 @@ void config_load (const char *cfg_name)
     }
 
   fclose (cfg);
-}
-
-
-main ()
-
-{
-  int i;
-  
-  config_load ("test/dummy.cfg");
-
-  
-  printf ("MAXPERIOD=%d\n", MAXPERIOD);
-  printf ("DBNAME='%s'\n", DBNAME);
-  printf ("RELATIVE=%d\n", RELATIVE);
-
-  printf ("COSTS=");
-  for (i = 0; i < nCOSTS; i++)
-    printf ("%d ", COSTS [i]);
-  printf ("\n");
 }

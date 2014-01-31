@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "config.h"
 #include "queue.h"
@@ -13,7 +14,7 @@ typedef struct _entry
     struct _entry *next;
   } entry;
 
-static void *qs [MAXCOST] = {NULL};
+static entry **qs = NULL;
 static int current = 0;
 static int max = -1;
 
@@ -23,6 +24,7 @@ void dump_qs ()
 {
   int i;
 
+  assert (qs);
   printf ("\nQ-Dump [%d, %d]\n", current, max);
 return;
   for (i = current; i <= max; i++)
@@ -45,16 +47,28 @@ void queue_init (void)
 /* (Re)initialise our q */
 
 {
-  int i;
-
-  for (i = 0; i <= max; i++)
+  // Do we have some old qs left to discard?
+  if (qs)
     {
-      if (qs [i])
+      int i;
+      for (i = 0; i <= max; i++)
 	{
-	  /* TO DO: we should probably free () any entries in qs [i] and their values ... */
-	  free (qs [i]);
-	  qs [i] = NULL;
+	  if (qs [i])
+	    {
+	      /* TO DO: do this properly!! */
+	      free (qs [i]);
+	      qs [i] = NULL;
+	    }
 	}
+
+      free (qs);
+    }
+
+  qs = calloc (sizeof (entry *), MAXCOST);
+  if (!qs)
+    {
+      perror ("queue_init () - calloc()");
+      exit (1);
     }
   current = 0;
   max = -1;
@@ -63,6 +77,8 @@ void queue_init (void)
 
 bool queue_insert (int cost, void *val)
 {
+  assert (qs);
+
   // Sanity 4 all!
   if (cost < current)
     return false;
@@ -90,6 +106,8 @@ bool queue_insert (int cost, void *val)
 void *queue_grabfront (void)
 
 {
+  assert (qs);
+
 // printf ("GRAB!\n"); fflush (stdout);
 // dump_qs (); fflush (stdout);
   // find first non empty q

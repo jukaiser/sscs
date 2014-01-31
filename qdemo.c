@@ -22,6 +22,8 @@ main ()
   FILE *rnd = fopen ("/dev/urandom", "r");
   value *v = malloc (sizeof (value)), *v2;
 
+  queue_init ();
+
   if (!v || !queue_insert (0, v))
     {
       fprintf (stderr, "Jetzt schon?!\n");

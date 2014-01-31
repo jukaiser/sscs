@@ -1,5 +1,3 @@
-#include <stdbool.h>
-
 #define DEAD	'.'
 #define ALIVE	'*'
 #define	UNDEF	' '
@@ -29,3 +27,6 @@ bool pat_compare (pattern *p1, pattern *p2);
 
 void lab_allocate (int _maxX, int _maxY, int _maxGen);
 void lab_init (void);
+
+#define W(p)    ((p)->right-(p)->left+1)
+#define H(p)    ((p)->bottom-(p)->top+1)

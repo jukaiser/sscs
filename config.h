@@ -1,22 +1,61 @@
 /* Customizable parts of the search program */
 
-/* Maximum search depth in terms of total cost for the salvo.
-   Changing this will slightly change the amount of memory needed by queue.c (there is an static void * qs [MAXCOST])
+#include <stdbool.h>
+
+
+extern char *PATH;		// Where to look for files
+
+extern int   MAXCOST;		// Maximum cost of reaction chains we will look at.
+
+/* Context of our pattern generating alg. How big is the universe, how many generations to look at. Max. period of oscillators */
+extern int   MAXWIDTH;
+extern int   MAXHEIGHT;
+extern int   MAXGEN;
+extern int   MAXPERIOD;
+
+extern int   MAX_RLE;		// Max size of any RLE that we can encode.
+extern char *BULLET;		// What bullet will we use. (DB-Table name!)
+extern char *START;		// Where do we find the first targets? (filename)
+extern int   MAX_FIND;		// Maximum number of sub patterns to detect before pattern analyzer calls it quits.
+
+/* SHIPMODE == true => we are looking at shipparts, not a (relativly) static constructing device
+   In ship mode the construction is assumed to be done by rakes traveling at (dx,dy)c/dt of period dt*factor.
+   It is further assumed, that the construction is repeated every dt*factor generations at another site (dx*factor,dy*factor) cells away.
+   I.e.: the target we are looking at is repeated "down ship" of us, while "up ship" there is the result of our target hit by the current bullet on the current lane (after dt*factor ticks)
 */
-#define MAXCOST	8192
+extern bool  SHIPMODE;
+extern int   DX;
+extern int   DY;
+extern int   DT;
+extern int   FACTOR;
 
-/* Dimensions of construction site
+extern int   LANES;		// Number of possible Lanes to look at
+extern bool  RELATIVE;		// Normally RELATVIE will be true. (both elbow movements and rake rephasings are based on the last lane used)
+extern int  *COSTS;		// Cost of using a certain lane. If relative == true, COSTS [i] means cost for lane(n+1) ::= lane(n) + i
+extern int  nCOSTS;		// # of elements in COSTS []
 
-   Slightly affects memory consumption and search speed.
-   (Something like MAXWIDTH*MAXHEIGHT*(MAXGEN+2) int's are needed for the evaluation of any reaction).
-   The calculation is clipped to the active area of the reaction.
+/* Database interace */
+extern char *DBHOST;		// the usual connection parameters for a mysql db. DBUSER must exist and have the GRANTs needed by us.
+extern int   DBPORT;
+extern char *DBNAME;
+extern char *DBUSER;
+extern char *DBPASSWD;
+
+/* SQL templates for accessing the above defined database
+   For each table we need a set of three templates: SQL_INSERT_*, SQL_FETCH_*, SQL_UNIQUE_*
+   They are used for storing and retreiving data to and from the table - and for checking if an object is already stored there.
 */
-#define MAXWIDTH 128
-#define MAXHEIGHT 64
-#define MAXGEN	256
-
-
-// Max size of an RLE for any given pattern.
-#define MAX_RLE 4096
-// #define MAX_FIND 100	
-
+#if 0	// RETHINK!!!
+extern char *SQL_INSERT_TARGET;
+extern char *SQL_FETCH_TARGET;
+extern char *SQL_UNIQUE_TARGET;
+extern char *SQL_INSERT_REACTION;
+extern char *SQL_FETCH_REACTION;
+extern char *SQL_UNIQUE_REACTION;
+extern char *SQL_INSERT_RESULT;
+extern char *SQL_FETCH_RESULT;
+extern char *SQL_UNIQUE_RESULT;
+extern char *SQL_INSERT_ESCAPING;
+extern char *SQL_FETCH_ESCAPING;
+extern char *SQL_UNIQUE_ESCAPING;
+#endif
