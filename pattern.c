@@ -21,7 +21,7 @@ static char *rle = NULL;
 
 
 void pat_init (pattern *p)
-// CAVE: we assume that every other function just care for cells within the bounding box (be carefull, when you extend that box!)
+// CAVE: we assume that every other function just cares for cells within the bounding box (be carefull, when you extend that box!)
 
 {
   assert (p);
@@ -35,6 +35,17 @@ void pat_init (pattern *p)
   p->bottom = -1;
   p->left   = 0;
   p->right  = -1;
+}
+
+
+void pat_fill (pattern *p, char value)
+
+{
+  memset (p->cell [0], value, p->sizeY * p->sizeX);
+  p->top = 0;
+  p->bottom = p->sizeY-1;
+  p->left = 0;
+  p->right = p->sizeX-1;
 }
 
 
@@ -414,9 +425,8 @@ void pat_envelope (pattern *pat)
 */
 
 
-/*
 pattern *pat_compact (pattern *p1, pattern *p2)
-// Allocate a copy of p2 which is *just* big enough for the bounding box.
+// Allocate a copy of p1 which is *just* big enough for the bounding box.
 
 {
   pattern *ret;
@@ -439,21 +449,16 @@ pattern *pat_compact (pattern *p1, pattern *p2)
 
   return ret;
 }
-*/
 
 
-void pat_from_string (pattern *pat, const char *str)
-// str contains exactly one pattern. load it centered into *pat
-// pat must be large enough to hold the pattern.
+void pat_from_string (const char *str)
+// str contains exactly one pattern. load it centered into lab [0]
 
 {
   int  x = 1, y = 1, count = 0, maxX = 1;
   bool isrle = false;
   char dCell, lCell, newLine, endPat;
   const char *cp = str;
-
-  assert (pat->sizeX >= temp->sizeX);
-  assert (pat->sizeY >= temp->sizeY);
 
   pat_init (temp);
   memset (temp->cell [0], DEAD, temp->sizeY * temp->sizeX); // we don't know the width of the pattern before we have loaded it ...
@@ -539,7 +544,7 @@ void pat_from_string (pattern *pat, const char *str)
 	  if (x + count >= temp->sizeX-1)
 	    {
 	      fprintf (stderr, "Pattern too wide!\n");
-	      exit (1);
+	      exit (2);
 	    }
 	  for (; count > 0; count--)
 	    temp->cell [y][x++] = (*cp == lCell) ? ALIVE : DEAD;
@@ -551,7 +556,7 @@ void pat_from_string (pattern *pat, const char *str)
 	  if (y >= temp->sizeY-1)
 	    {
 	      fprintf (stderr, "Pattern too high!\n");
-	      exit (1);
+	      exit (2);
 	    }
 	  x = 1;
 	  count = 0;
@@ -568,8 +573,8 @@ void pat_from_string (pattern *pat, const char *str)
 
   // OK. Loading to a temporary space is done. Now we just have to keep this thing.
   // Draw temp centered in lab [0], discarding old content.
-  pat_copy  (pat, (pat->sizeX-W(temp))/2, (pat->sizeY-H(temp))/2, temp);
-  pat_shrink_bbox (pat);
+  pat_copy  (&lab [0], (lab [0].sizeX-W(temp))/2, (lab [0].sizeY-H(temp))/2, temp);
+  pat_shrink_bbox (&lab [0]);
 }
 
 
@@ -586,9 +591,8 @@ bool is_empty (const char *line)
 }
 
 
-void pat_load (pattern *pat, FILE *f)
-// f is an open FILE, that contains one or more patterns. Load the one at the current position into *pat and keep file open.
-// pat must be large enough to hold the pattern.
+void pat_load (FILE *f)
+// f is an open FILE, that contains one or more patterns. Load the one at the current position into lab [0] and keep file open.
 
 {
   char buffer [MAX_RLE];
@@ -612,7 +616,7 @@ void pat_load (pattern *pat, FILE *f)
   if (ferror (f))
     {
       perror ("pat_load");
-      exit (1);
+      exit (2);
     }
 
   pos = buffer + strlen (buffer);
@@ -629,10 +633,10 @@ void pat_load (pattern *pat, FILE *f)
   if (ferror (f))
     {
       perror ("pat_load");
-      exit (1);
+      exit (2);
     }
 
-  pat_from_string (pat, buffer);
+  pat_from_string (buffer);
 }
 
 
@@ -689,7 +693,7 @@ b2o$obo$2bo!
   if (!rle)
     {
       perror ("pat_rle () - malloc ()");
-      exit (1);
+      exit (2);
     }
   
 
@@ -790,7 +794,7 @@ void phases_load (object *o, const char *name, const char *pat_str)
       if (!W(&lab[i]))
 	{
 	  fprintf (stderr, "object '%s' dies after %d phases!\n", name, i);
-	  exit (1);
+	  exit (2);
 	}
       pat_envelope (&lab [i]);
       o->phases [i].pat = pat_compact (&lab [i], NULL);
@@ -982,7 +986,7 @@ bool pat_compare (pattern *p1, pattern *p2)
   if (p1->right != p2->right)
     return false;
 
-  // Copy ALL cells! even dead ones.
+  // compare ALL cells! even dead ones.
   for (y = p1->top; y <= p1->bottom;  y++)
     for (x = p1->left; x <= p1->right;  x++)
       if ((p1->cell [y][x] == ALIVE) != (p2->cell [y][x] == ALIVE))
@@ -990,4 +994,103 @@ bool pat_compare (pattern *p1, pattern *p2)
 
   // If we get here, we didn't find no difference!
   return true;
+}
+
+
+static int pat_x_distance (pattern *p1, pattern *p2, int offX, int offY)
+// Helpder: check if the x component of the bbox of p2 translated by (offX, offY) overlaps the bbox of p1
+
+{
+  if (p1->right < p2->left+offX)
+    return p2->left+offX - p1->right;
+  if (p1->left > p2->right+offX)
+    return p1->left - (p2->right+offX);
+  return 0;
+}
+
+
+static int pat_y_distance (pattern *p1, pattern *p2, int offX, int offY)
+// Helpder: check if the y component of the bbox of p2 translated by (offX, offY) overlaps the bbox of p1
+
+{
+  if (p1->bottom < p2->top+offY)
+    return p2->top+offY - p1->bottom;
+  if (p1->top > p2->bottom+offY)
+    return p1->top - (p2->bottom+offY);
+  return 0;
+}
+
+
+
+void pat_collide (pattern *target, bullet *b, int lane)
+// TO DO: chk 4 overflow!!
+
+{
+  int x, y, dx, dy;
+
+  pat_copy  (&lab [0], (lab [0].sizeX-W(target))/2, (lab [0].sizeY-H(target))/2, target);
+
+  // Find out where to place the bullet.
+  switch (b->reference)
+    {
+      case topleft:
+	x = lab [0].left;
+	y = lab [0].top;
+	break;
+      case topright:
+	x = lab [0].right;
+	y = lab [0].top;
+	break;
+      case bottomleft:
+	x = lab [0].left;
+	y = lab [0].bottom;
+	break;
+      case bottomright:
+	x = lab [0].right;
+	y = lab [0].bottom;
+	break;
+    }
+
+  x += b->base_x + lane*b->lane_dx;
+  y += b->base_y + lane*b->lane_dy;
+  dx = pat_x_distance (&lab [0], b->p, x, y);
+  dy = pat_y_distance (&lab [0], b->p, x, y);
+
+  // Avoid unneccessary pregap.
+  if (b->lane_dx == 0 && b->lane_dy < 0 && dy > 3 && b->dy > 0)
+    {
+      dy /= b->dy;
+      x += (dy-3) * b->dx;
+      y += (dy-3) * b->dy;
+    }
+  else if (b->lane_dx == 0 && b->lane_dy > 0 && dy > 3 && b->dy < 0)
+    {
+      fprintf (stderr, "Warning: bullets with lane_dy < 0 untested. YMMV!\n");
+      dy /= -b->dy;
+      x += (dy-3) * b->dx;
+      y += (dy-3) * b->dy;
+    }
+  else if (b->lane_dy == 0 && b->lane_dx < 0 && dx > 3 && b->dx > 0)
+    {
+      fprintf (stderr, "Warning: bullets with lane_dx > 0 untested. YMMV!\n");
+      dx /= b->dx;
+      x += (dx-3) * b->dx;
+      y += (dx-3) * b->dy;
+    }
+  else if (b->lane_dy == 0 && b->lane_dx > 0 && dx > 3 && b->dx < 0)
+    {
+      fprintf (stderr, "Warning: bullets with lane_dx < 0 untested. YMMV!\n");
+      dx /= -b->dx;
+      x += (dx-3) * b->dx;
+      y += (dx-3) * b->dy;
+    }
+
+  pat_add  (&lab [0], x, y, b->p);
+}
+
+
+int pat_count_lanes (pattern *target, bullet *b)
+
+{
+  return W(target)*b->lanes_per_width + H(target)*b->lanes_per_height + b->extra_lanes;
 }

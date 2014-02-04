@@ -32,6 +32,7 @@ int   DBPORT	  = 3306;
 char *DBNAME	  = "gol";
 char *DBUSER	  = "gol";
 char *DBPASSWD    = "";
+char *SQL_F_BULLET = "SELECT rle, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes FROM bullets WHERE name = '%s'";
 
 // <- config.h
 
@@ -46,29 +47,30 @@ typedef struct
 
 static cfg_var config [] =
   {
-    {"PATH",	    STRING,  &PATH},
-    {"MAXCOST",	    NUM,     &MAXCOST},
-    {"MAXWIDTH",    NUM,     &MAXWIDTH},
-    {"MAXHEIGHT",   NUM,     &MAXHEIGHT},
-    {"MAXGEN",	    NUM,     &MAXGEN},
-    {"MAXPERIOD",   NUM,     &MAXPERIOD},
-    {"MAX_RLE",	    NUM,     &MAX_RLE},
-    {"BULLET",	    STRING,  &BULLET},
-    {"START",	    STRING,  &START},
-    {"MAX_FIND",    NUM,     &MAX_FIND},
-    {"SHIPMODE",    BOOL,    &SHIPMODE},
-    {"DX",	    NUM,     &DX},
-    {"DY",	    NUM,     &DY},
-    {"DT",	    NUM,     &DT},
-    {"FACTOR",	    NUM,     &FACTOR},
-    {"LANES",	    NUM,     &LANES},
-    {"RELATIVE",    BOOL,    &RELATIVE},
-    {"COSTS",	    N_ARRAY, &COSTS, &nCOSTS},
-    {"DBHOST",	    STRING,  &DBHOST},
-    {"DBPORT",	    NUM,     &DBPORT},
-    {"DBNAME",	    STRING,  &DBNAME},
-    {"DBUSER",	    STRING,  &DBUSER},
-    {"DBPASSWD",    STRING,  &DBPASSWD},
+    {"PATH",		STRING,  &PATH},
+    {"MAXCOST",		NUM,     &MAXCOST},
+    {"MAXWIDTH",	NUM,     &MAXWIDTH},
+    {"MAXHEIGHT",	NUM,     &MAXHEIGHT},
+    {"MAXGEN",		NUM,     &MAXGEN},
+    {"MAXPERIOD",	NUM,     &MAXPERIOD},
+    {"MAX_RLE",		NUM,     &MAX_RLE},
+    {"BULLET",		STRING,  &BULLET},
+    {"START",		STRING,  &START},
+    {"MAX_FIND",	NUM,     &MAX_FIND},
+    {"SHIPMODE",	BOOL,    &SHIPMODE},
+    {"DX",		NUM,     &DX},
+    {"DY",		NUM,     &DY},
+    {"DT",		NUM,     &DT},
+    {"FACTOR",		NUM,     &FACTOR},
+    {"LANES",		NUM,     &LANES},
+    {"RELATIVE",	BOOL,    &RELATIVE},
+    {"COSTS",		N_ARRAY, &COSTS, &nCOSTS},
+    {"DBHOST",		STRING,  &DBHOST},
+    {"DBPORT",		NUM,     &DBPORT},
+    {"DBNAME",		STRING,  &DBNAME},
+    {"DBUSER",		STRING,  &DBUSER},
+    {"DBPASSWD",	STRING,  &DBPASSWD},
+    {"SQL_F_BULLET",	STRING,	 &SQL_F_BULLET},
     {NULL}
   };
 
@@ -168,7 +170,7 @@ static void handle_string (const char *var, char **v_ptr, const char *val)
   if (!v_ptr)
     {
       perror ("config::handle_string() - strdup");
-      exit (1);
+      exit (2);
     }
 }
 
@@ -223,7 +225,7 @@ static void handle_array (const char *var, int **v_ptr, int *n_ptr, char *val)
       if (!*v_ptr)
 	{
 	  perror ("config::handle_array() - calloc");
-	  exit (1);
+	  exit (2);
 	}
       for (k = 1; k <= nLanes; k++)
 	(*v_ptr) [(k*step)%nLanes] = k;
@@ -238,7 +240,7 @@ static void handle_array (const char *var, int **v_ptr, int *n_ptr, char *val)
   if (!*v_ptr)
     {
       perror ("config::handle_array() - calloc");
-      exit (1);
+      exit (2);
     }
 
   // Parse each value into a number ...

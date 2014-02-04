@@ -45,7 +45,6 @@ extern char *DBPASSWD;
    For each table we need a set of three templates: SQL_INSERT_*, SQL_FETCH_*, SQL_UNIQUE_*
    They are used for storing and retreiving data to and from the table - and for checking if an object is already stored there.
 */
-#if 0	// RETHINK!!!
 extern char *SQL_INSERT_TARGET;
 extern char *SQL_FETCH_TARGET;
 extern char *SQL_UNIQUE_TARGET;
@@ -58,4 +57,8 @@ extern char *SQL_UNIQUE_RESULT;
 extern char *SQL_INSERT_ESCAPING;
 extern char *SQL_FETCH_ESCAPING;
 extern char *SQL_UNIQUE_ESCAPING;
-#endif
+
+extern char *SQL_F_BULLET;
+
+
+void config_load (const char *cfg_name);

@@ -68,7 +68,7 @@ void queue_init (void)
   if (!qs)
     {
       perror ("queue_init () - calloc()");
-      exit (1);
+      exit (2);
     }
   current = 0;
   max = -1;
