@@ -3,9 +3,13 @@
 #define	UNDEF	' '
 #define VISITED	':'
 
+// WARNING: you must fit this to the data type your DB uses for ROW IDs.
+typedef unsigned long long ROWID;
+
 // pattern and stuff
 typedef struct
   {
+    ROWID id;				// ROW ID in database table (0 if not yet stored!)
     int top, bottom, left, right;	// bounding box
     int sizeX, sizeY;			// actual size of cell [][]
     char **cell;			// 2dim array of cells (cell [Y][X] == ALIVE ...)
@@ -15,6 +19,8 @@ typedef struct
 typedef enum {topleft, topright, bottomleft, bottomright} corner;
 typedef struct
   {
+    ROWID   id;				// ROW ID in database table (0 if not yet stored!)
+    char    *name;			// name to access/reference this bullet.
     pattern *p;
     int     dx, dy, dt;			// speed and period of the bullet
     int     base_x, base_y;		// Where will lane 0 be?
@@ -37,6 +43,7 @@ void pat_shrink_bbox (pattern *p);
 bool pat_generate (pattern *p1, pattern *p2);
 void pat_add (pattern *p1, int X, int Y, pattern *p2);
 void pat_copy (pattern *p1, int offX, int offY, pattern *p2);
+bool pat_match (pattern *p1, int offX, int offY, pattern *p2);
 void pat_remove (pattern *p1, int offX, int offY, pattern *p2);
 void pat_load (FILE *f);
 void pat_from_string (const char *str);
@@ -46,7 +53,7 @@ bool pat_compare (pattern *p1, pattern *p2);
 void lab_allocate (int _maxX, int _maxY, int _maxGen);
 void lab_init (void);
 
-void pat_collide (pattern *target, bullet *b, int lane);
+void pat_collide (pattern *target, bullet *b, int lane, int *fly_x, int *fly_y, int *fly_dt);
 int  pat_count_lanes (pattern *target, bullet *b);
 
 #define W(p)    ((p)->right-(p)->left+1)

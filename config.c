@@ -32,7 +32,7 @@ int   DBPORT	  = 3306;
 char *DBNAME	  = "gol";
 char *DBUSER	  = "gol";
 char *DBPASSWD    = "";
-char *SQL_F_BULLET = "SELECT rle, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes FROM bullets WHERE name = '%s'";
+char *SQL_F_BULLET = "SELECT bId, rle, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes FROM bullets WHERE name = '%s'";
 
 // <- config.h
 

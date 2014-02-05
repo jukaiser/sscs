@@ -28,6 +28,14 @@ void db_init (void)
 {
   con = mysql_init(NULL);
 
+  // make sure our notion of ROWID will work on this platform.
+  // YMWV
+  if (sizeof (ROWID) != sizeof (my_ulonglong))
+    {
+      fprintf (stderr, "Please redefine ROWID in pattern.h to fit my_ulonglong on your platform!\nThen you have to recompile\n");
+      exit (3);
+    }
+
   if (con == NULL)
     {
       fprintf(stderr, "mysql_init () failed\n");
@@ -73,13 +81,6 @@ void db_target_insert (const char *rle, int sizeX, int sizeY)
 }
 
 
-/*
-typedef struct
-  {
-  } bullet;
-*/
-
-
 bullet *db_bullet_load (const char *name)
 
 {
@@ -105,26 +106,28 @@ bullet *db_bullet_load (const char *name)
     }
 
   MYSQL_ROW row = mysql_fetch_row (result);
-  pat_from_string (row [0]);
+  b->id = strtoull (row [0], NULL, 0);
+  b->name = strdup (name); if (!b->name) { perror ("db_bullet_load - strdup"); exit (2); }
+  pat_from_string (row [1]);
   b->p = pat_compact (&lab [0], NULL);
-  b->dx = atoi (row [1]);
-  b->dy = atoi (row [2]);
-  b->dt = atoi (row [3]);
-  b->base_x = atoi (row [4]);
-  b->base_y = atoi (row [5]);
-  if (strcmp (row [6], "TOPLEFT") == 0)
+  b->dx = atoi (row [2]);
+  b->dy = atoi (row [3]);
+  b->dt = atoi (row [4]);
+  b->base_x = atoi (row [5]);
+  b->base_y = atoi (row [6]);
+  if (strcmp (row [7], "TOPLEFT") == 0)
     b->reference = topleft;
-  else if (strcmp (row [6], "TOPRIGHT") == 0)
+  else if (strcmp (row [7], "TOPRIGHT") == 0)
     b->reference = topright;
-  else if (strcmp (row [6], "BOTTOMLEFT") == 0)
+  else if (strcmp (row [7], "BOTTOMLEFT") == 0)
     b->reference = bottomleft;
-  else if (strcmp (row [6], "BOTTOMRIGHT") == 0)
+  else if (strcmp (row [7], "BOTTOMRIGHT") == 0)
     b->reference = bottomright;
-  b->lane_dx = atoi (row [7]);
-  b->lane_dy = atoi (row [8]);
-  b->lanes_per_width = atoi (row [9]);
-  b->lanes_per_height = atoi (row [10]);
-  b->extra_lanes = atoi (row [11]);
+  b->lane_dx = atoi (row [8]);
+  b->lane_dy = atoi (row [9]);
+  b->lanes_per_width = atoi (row [10]);
+  b->lanes_per_height = atoi (row [11]);
+  b->extra_lanes = atoi (row [12]);
 
   mysql_free_result (result);
 

@@ -1,3 +1,4 @@
+// TO DO: DEAD ./. UNDEF!!!!
 /* Dealing with GoL patterns. */
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,6 +31,10 @@ void pat_init (pattern *p)
   assert (p->sizeY > 0);
   assert (p->sizeX > 0);
 
+
+  // pattern is not stored in DB ... as far as we known, that is.
+  p->id = 0;
+
   // memset (p->cell [0], DEAD, p->sizeY * p->sizeX);
   p->top    = 0;
   p->bottom = -1;
@@ -42,6 +47,7 @@ void pat_fill (pattern *p, char value)
 
 {
   memset (p->cell [0], value, p->sizeY * p->sizeX);
+  p->id = 0;
   p->top = 0;
   p->bottom = p->sizeY-1;
   p->left = 0;
@@ -142,6 +148,8 @@ void pat_shrink_bbox (pattern *p)
 {
   int x, y;
 
+  p->id = 0;
+
   if (H(p) <= 0) return;
 
   int  ymin = p->top, ymax = p->bottom;
@@ -186,10 +194,14 @@ void pat_shrink_bbox (pattern *p)
 
 bool pat_generate (pattern *p1, pattern *p2)
 // TO DO: support for other Rules then B2/S32, support for lifeHistory look alikes
+// REWORK: we are LEAVING THE BOXX
 
 {
   int neighbors [p2->sizeY][p2->sizeX];
   int x, y;
+
+  // p2 is about to be altered
+  p2->id = 0;
 
   // If p1 contains no living cells, then p2 won't either!
   if (H(p1) <= 0)
@@ -198,7 +210,7 @@ bool pat_generate (pattern *p1, pattern *p2)
       p2->bottom = -1;
       p2->left = 0;
       p2->right = -1;
-      return 0;
+      return false;
     }
 
   assert (p2->sizeY >= p1->sizeY);
@@ -292,6 +304,8 @@ void pat_add (pattern *p1, int offX, int offY, pattern *p2)
       return;
     }
 
+  p2->id = 0;
+
   assert (offY + p2->bottom < p1->sizeY);
   assert (offX + p2->right < p1->sizeX);
 
@@ -312,7 +326,7 @@ void pat_add (pattern *p1, int offX, int offY, pattern *p2)
     for (x = nLeft; x < p1->left; x++)
       p1->cell [y][x] = DEAD;
   for (y = nTop; y <= nBottom; y++)
-    for (x = p1->right+1; x < nRight; x++)
+    for (x = p1->right+1; x <= nRight; x++)
       p1->cell [y][x] = DEAD;
   p1->top = nTop;
   p1->bottom = nBottom;
@@ -332,6 +346,8 @@ void pat_copy (pattern *p1, int offX, int offY, pattern *p2)
 
 {
   int x, y;
+
+  p2->id = 0;
 
   assert (offY + p2->bottom < p1->sizeY);
   assert (offX + p2->right < p1->sizeX);
@@ -354,6 +370,8 @@ void pat_remove (pattern *p1, int offX, int offY, pattern *p2)
 {
   int x, y;
 
+  p2->id = 0;
+
   assert (offY + p2->bottom < p1->sizeY);
   assert (offX + p2->right < p1->sizeX);
 
@@ -372,6 +390,8 @@ void pat_envelope (pattern *pat)
 
 {
   int x, y;
+
+  pat->id = 0;
 
   // Sanity check - pat must be valid and have enough space left.
   assert (pat);
@@ -997,6 +1017,31 @@ bool pat_compare (pattern *p1, pattern *p2)
 }
 
 
+bool pat_match (pattern *p1, int offX, int offY, pattern *p2)
+// try to find p2 at (offX, offY) of p1
+
+{
+  int x, y;
+
+  if (!W(p1))
+    return false;
+
+  // if p2 is not completly inside of p1->bbox then there could be no match.
+  if (p2->left+offX < p1->left || p2->right+offX  > p1->right ||
+      p2->top+offY  < p1->top  || p2->bottom+offY > p1->bottom)
+    return false;
+
+  // compare cell by cell
+  for (y = p2->top; y <= p2->bottom;  y++)
+    for (x = p2->left; x <= p2->right;  x++)
+      if ((p1->cell [y+offY][x+offX] == ALIVE) != (p2->cell [y][x] == ALIVE))
+	return false;
+
+  // If we get here, we didn't find no difference!
+  return true;
+}
+
+
 static int pat_x_distance (pattern *p1, pattern *p2, int offX, int offY)
 // Helpder: check if the x component of the bbox of p2 translated by (offX, offY) overlaps the bbox of p1
 
@@ -1022,13 +1067,27 @@ static int pat_y_distance (pattern *p1, pattern *p2, int offX, int offY)
 
 
 
-void pat_collide (pattern *target, bullet *b, int lane)
+void pat_collide (pattern *target, bullet *b, int lane, int *fly_x, int *fly_y, int *fly_dt)
 // TO DO: chk 4 overflow!!
 
 {
-  int x, y, dx, dy;
+  int x, y, dx, dy, dt, tt, tb, tl, tr;
 
+  assert (b);
+  assert (b->p && H(b->p) > 0);
+  assert (target && H(target) > 0);
+  assert (b->dx != 0 || d->dy != 0);
+  assert (b->lane_dx != 0 || b->lane_dy != 0);
+  assert (b->p->top == 0 && b->p->left == 0);
+  assert (target->top == 0 && target->left == 0);
+
+  // TO elim this??
+  pat_fill (&lab [0], DEAD);
   pat_copy  (&lab [0], (lab [0].sizeX-W(target))/2, (lab [0].sizeY-H(target))/2, target);
+  tt = lab [0].top;
+  tb = lab [0].bottom;
+  tl = lab [0].left;
+  tr = lab [0].right;
 
   // Find out where to place the bullet.
   switch (b->reference)
@@ -1086,6 +1145,46 @@ void pat_collide (pattern *target, bullet *b, int lane)
     }
 
   pat_add  (&lab [0], x, y, b->p);
+
+  // calculate coordinates for fly-by detection.
+  // Fly-by means that neither the bullet nor the target is (permanetly) altered by the reaction.
+  // I.e.: we'll calculate the time the bullet would take to travel safely past the target and where it would then be.
+  // The caller could then use this informations to look for the bullet in this place and generation.
+  // After successfully removing the bullet he/she can then compare the result with the (coressponding phase) of the original target.
+  dt = MAXGEN;	// hopefully > *fly_dt to find
+  if (b->dx > 0)
+    {
+      dx = tr + 3 - x;
+      dx = (dx + b->dx-1) / b->dx;
+      if (dx <= 0) { fprintf (stderr, "Internal error pat_collide(b->dx>0) -> fly-by-dx <= 0!\n"); exit (3); }
+      dt = dx*b->dt;
+    }
+  else if (b->dx < 0)
+    {
+      dx = x + b->p->right + 3 - tl;
+      dx = (dx + b->dx-1) / b->dx;
+      if (dx <= 0) { fprintf (stderr, "Internal error pat_collide(b->dx<0) -> fly-by-dx <= 0!\n"); exit (3); }
+      dt = dx*b->dt;
+    }
+  if (b->dy > 0)
+    {
+      dy = tb + 3 - y;
+      dy = (dy + b->dy-1) / b->dy;
+      if (dy <= 0) { fprintf (stderr, "Internal error pat_collide(b->dy>0) -> fly-by-dy <= 0!\n"); exit (3); }
+      if (dt >= dy*b->dt)
+        dt = dy*b->dt;
+    }
+  else if (b->dy < 0)
+    {
+      dy = y + b->p->bottom + 3 - tt;
+      dy = (dy + b->dy-1) / b->dy;
+      if (dy <= 0) { fprintf (stderr, "Internal error pat_collide(b->dx<0) -> fly-by-dy <= 0!\n"); exit (3); }
+      if (dt >= dy*b->dt)
+        dt = dy*b->dt;
+    }
+  *fly_x = x + (dt/b->dt)*b->dx;
+  *fly_y = y + (dt/b->dt)*b->dy;
+  *fly_dt = dt;
 }
 
 
