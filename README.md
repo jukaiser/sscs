@@ -2,6 +2,15 @@ This is work-in-progress.
 
 Use as you see fit. Don't blame me for nothing.
 
-Right now there is only a small demo for a specialized weighted queing system and a pattern
-load/mixing/generating demo.
+Use .sql files under Schema for setting up a mysql database.
+Edit test/default.cfg to reflect username, password and possible db-Host of that database.
+
+Then (after running `make`) you could use
+
+./sscs test/default.cfg
+
+for stepping thru some demo-collision.
+
+sscs is nothing more then a first prototype!
+
 
