@@ -33,6 +33,9 @@ char *DBNAME	  = "gol";
 char *DBUSER	  = "gol";
 char *DBPASSWD    = "";
 char *SQL_F_BULLET = "SELECT bId, rle, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes FROM bullets WHERE name = '%s'";
+char *SQL_COUNT_SPACESHIPS = "SELECT COUNT(*) FROM space_ships";
+char *SQL_SPACESHIPS = "SELECT sId, rle, name, dx, dy, dt FROM space_ships";
+
 
 // <- config.h
 
@@ -71,6 +74,8 @@ static cfg_var config [] =
     {"DBUSER",		STRING,  &DBUSER},
     {"DBPASSWD",	STRING,  &DBPASSWD},
     {"SQL_F_BULLET",	STRING,	 &SQL_F_BULLET},
+    {"SQL_COUNT_SPACESHIPS", STRING, &SQL_COUNT_SPACESHIPS},
+    {"SQL_SPACESHIPS",  STRING, &SQL_SPACESHIPS},
     {NULL}
   };
 

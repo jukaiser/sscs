@@ -133,3 +133,87 @@ bullet *db_bullet_load (const char *name)
 
   return b;
 }
+
+/*
+    ROWID    id;                        // ROW ID in database table (0 if not yet stored!)
+    pattern *pat;
+    char    *name;
+    int      dx, dy, dt;                // speed and period of the bullet
+*/
+
+object *db_load_space_ships (void)
+// Load ALL space ships from our database
+
+{
+  object *ret;
+  int i, n;
+
+  if (mysql_query (con, SQL_COUNT_SPACESHIPS))
+    finish_with_error (con);
+
+  MYSQL_RES *result = mysql_store_result (con);
+
+  if (!result)
+    {
+      fprintf (stderr, "Please check database! No ships found with SQL_F_COUNT_SPACESHIPS?");
+      exit (2);
+    }
+
+  MYSQL_ROW row = mysql_fetch_row (result);
+  n = strtoull (row [0], NULL, 0);
+  mysql_free_result (result);
+
+  if (n < 1)
+    {
+      fprintf (stderr, "Please check database! No ships found with SQL_F_COUNT_SPACESHIPS?");
+      exit (2);
+    }
+
+  ret = calloc (n+1, sizeof (object));
+  if (!ret)
+    {
+      perror ("db_load_space_ships - calloc");
+      exit (2);
+    }
+
+  if (mysql_query (con, SQL_SPACESHIPS))
+    finish_with_error (con);
+
+  result = mysql_store_result (con);
+
+  if (!result)
+    {
+      fprintf (stderr, "Please check database! No ships found with SQL_F_COUNT_SPACESHIPS?");
+      exit (2);
+    }
+
+  for (i = 0; i < n; i++)
+    {
+      row = mysql_fetch_row (result);
+
+      if (!row)
+	{
+	  fprintf (stderr, "Please check database! SQL_F_COUNT_SPACESHIPS ./. SQL_F_SPACESHIPS?");
+	  exit (2);
+	}
+
+      ret [i].id = strtoull (row [0], NULL, 0);
+      pat_from_string (row [1]);
+      pat_envelope (&lab [0]);
+      ret [i].pat = pat_compact (&lab [0], NULL);
+      ret [i].name = strdup (row [2]); if (!ret [i].name) { perror ("db_load_space_ships - strdup"); exit (2); }
+      ret [i].dx = atoi (row [3]);
+      ret [i].dy = atoi (row [4]);
+      ret [i].dt = atoi (row [5]);
+      obj_mark_first (&ret [i]);
+    }
+
+  ret [n].id = 0;
+  ret [n].pat = NULL;
+  ret [n].name = NULL;
+
+  mysql_free_result (result);
+
+  return ret;
+}
+

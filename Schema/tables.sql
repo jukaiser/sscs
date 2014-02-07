@@ -16,8 +16,8 @@ CREATE TABLE bullets (
   lanes_per_height int(11) NOT NULL,
   lanes_per_width int(11) NOT NULL,
   extra_lanes int(11) NOT NULL,
-  UNIQUE KEY name (name),
-  KEY rle (rle)
+  UNIQUE KEY (name),
+  KEY (rle)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 INSERT INTO bullets VALUES
@@ -33,24 +33,22 @@ CREATE TABLE chain (
   parent_cId int(11) DEFAULT NULL,
   rId int(11) DEFAULT NULL,
   cost int(11) NOT NULL,
-  KEY context (context),
-  KEY parent_tId (parent_tId),
-  KEY parent_cId (parent_cId),
-  KEY cost (cost)
+  KEY (context),
+  KEY (parent_tId),
+  KEY (parent_cId),
+  KEY (cost)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
-DROP TABLE IF EXISTS extra_ships;
-CREATE TABLE extra_ships (
+DROP TABLE IF EXISTS emitted;
+CREATE TABLE emitted (
   eId int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
   rId int(11) NOT NULL,
-  rle varchar(30) NOT NULL,
-  width int(11) NOT NULL,
-  height int(11) NOT NULL,
-  dx int(11) NOT NULL,
-  dy int(11) NOT NULL,
-  dt int(11) NOT NULL,
-  KEY rId (rId),
-  KEY rle (rle)
+  sId int(11) NOT NULL,
+  offX int(11) NOT NULL,
+  offY int(11) NOT NULL,
+  gen int(11) NOT NULL,
+  KEY (rId),
+  KEY (sId)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 DROP TABLE IF EXISTS reaction;
@@ -60,11 +58,14 @@ CREATE TABLE reaction (
   bId int(11) NOT NULL,
   lane int(11) NOT NULL,
   result_tId int(11) NOT NULL,
-  dx int(11) NOT NULL,
-  dy int(11) NOT NULL,
-  dt int(11) NOT NULL,
-  result enum('fly-by','stable','unfinished','extraships') DEFAULT NULL,
-  KEY result (result)
+  offX int(11) NOT NULL,
+  offY int(11) NOT NULL,
+  gen int(11) NOT NULL,
+  result enum('dies','fly-by','stable','unfinished') DEFAULT NULL,
+  emits_ships enum('false','true') DEFAULT 'false',
+  summary varchar(4000) NOT NULL,
+  KEY (result),
+  FULLTEXT INDEX (summary)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 DROP TABLE IF EXISTS target;
@@ -73,12 +74,16 @@ CREATE TABLE target (
   rle varchar(1000) NOT NULL,
   width int(11) NOT NULL,
   height int(11) NOT NULL,
+  combined_width int(11),
+  combined_height int(11),
+  offX int(11),
+  offY int(11),
   is_stable enum('false','true') NOT NULL DEFAULT 'false',
   period int(11) NOT NULL,
   next_tId int(11) DEFAULT NULL,
   comment varchar(1000),
-  UNIQUE KEY rle (rle),
-  KEY next_tId (next_tId),
+  UNIQUE KEY (rle),
+  KEY (next_tId),
   KEY (comment)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
@@ -92,6 +97,6 @@ CREATE TABLE space_ships (
   dx int(11) NOT NULL,
   dy int(11) NOT NULL,
   dt int(11) NOT NULL,
-  UNIQUE KEY rle (rle)
+  UNIQUE KEY (rle)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 

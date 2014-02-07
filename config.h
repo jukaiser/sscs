@@ -59,6 +59,7 @@ extern char *SQL_FETCH_ESCAPING;
 extern char *SQL_UNIQUE_ESCAPING;
 
 extern char *SQL_F_BULLET;
-
+extern char *SQL_COUNT_SPACESHIPS;
+extern char *SQL_SPACESHIPS;
 
 void config_load (const char *cfg_name);

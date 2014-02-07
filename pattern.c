@@ -15,9 +15,10 @@
 
 
 pattern *lab = NULL;
-int maxX, maxY, maxGen;
+found   *findings = NULL;
+int maxX, maxY, maxGen, maxFound, nFound;
 
-static pattern *temp = NULL;
+static pattern *temp = NULL, *temp2 = NULL;
 static char *rle = NULL;
 
 
@@ -104,7 +105,7 @@ void pat_deallocate (pattern *pat)
 }
 
 
-void lab_allocate (int _maxX, int _maxY, int _maxGen)
+void lab_allocate (int _maxX, int _maxY, int _maxGen, int _maxFind)
 
 {
   int g;
@@ -112,10 +113,12 @@ void lab_allocate (int _maxX, int _maxY, int _maxGen)
   assert (_maxX > 0);
   assert (_maxY > 0);
   assert (_maxGen > 0);
+  assert (_maxFind > 0);
 
   maxX = _maxX;
   maxY = _maxY;
   maxGen = _maxGen;
+  maxFound = _maxFind;
 
   ALLOC(pattern,lab,maxGen);
 
@@ -126,6 +129,9 @@ void lab_allocate (int _maxX, int _maxY, int _maxGen)
   assert (lab [0].sizeX > 0 && lab [0].sizeY > 0);
 
   temp = pat_allocate (NULL, maxX, maxY);
+  temp2 = pat_allocate (NULL, maxX, maxY);
+
+  ALLOC(found,findings,maxFound);
 }
 
 
@@ -194,7 +200,6 @@ void pat_shrink_bbox (pattern *p)
 
 bool pat_generate (pattern *p1, pattern *p2)
 // TO DO: support for other Rules then B2/S32, support for lifeHistory look alikes
-// REWORK: we are LEAVING THE BOXX
 
 {
   int neighbors [p2->sizeY][p2->sizeX];
@@ -385,7 +390,6 @@ void pat_remove (pattern *p1, int offX, int offY, pattern *p2)
 }
 
 
-/*
 void pat_envelope (pattern *pat)
 
 {
@@ -442,7 +446,6 @@ void pat_envelope (pattern *pat)
   pat->left--;
   pat->right++;
 }
-*/
 
 
 pattern *pat_compact (pattern *p1, pattern *p2)
@@ -481,7 +484,7 @@ void pat_from_string (const char *str)
   const char *cp = str;
 
   pat_init (temp);
-  memset (temp->cell [0], DEAD, temp->sizeY * temp->sizeX); // we don't know the width of the pattern before we have loaded it ...
+  pat_fill (temp, DEAD);
 
   /* Try to find out which format the str is in.
      Supported formats are:
@@ -773,29 +776,31 @@ void pat_dump (pattern *p)
 }
 
 
-/*
-static void phases_mark_first (phase *p)
-// Helperfunction: search the first living cell (starting with (left, top)) and set firstX/Y accordingly
-{
-  assert (p);
-  assert (p->pat);
-  assert (p->pat->cell);
-  assert (p->pat->cell [0]);
-  assert (p->pat->top == 0);
-  assert (p->pat->left == 0);
-  assert (W(p->pat) > 0);
-  assert (H(p->pat) > 0);
+void obj_mark_first (object *o)
+// Search the first living cell (starting with (left, top)) and set firstX/Y accordingly
 
-  p->firstY = p->pat->top + 1;
-  for (p->firstX = p->pat->left; p->firstX < p->pat->right; p->firstX++)
-    if (p->pat->cell [p->firstY][p->firstX] == ALIVE)
+{
+  assert (o);
+  assert (o->pat);
+  assert (o->pat->cell);
+  assert (o->pat->cell [0]);
+  assert (o->pat->top == 0);
+  assert (o->pat->left == 0);
+  assert (W(o->pat) > 0);
+  assert (H(o->pat) > 0);
+
+  o->firstY = o->pat->top + 1;
+  for (o->firstX = o->pat->left+1; o->firstX < o->pat->right; o->firstX++)
+    if (o->pat->cell [o->firstY][o->firstX] == ALIVE)
       return;
 
   // we're not supposed to end here ...
+  pat_dump (o->pat);
   assert (0);
 }
 
 
+/*
 void phases_load (object *o, const char *name, const char *pat_str)
 
 {
@@ -849,74 +854,122 @@ void phases_derive (object *v1, pat_xform pxf, object *o)
       free (temp);
     }
 }
+*/
 
 
-void objgrp_match (objectGroup *og, int g)
-// Try to find the objects in *og in generation g
-// Copy all hits into og->foundObjects [] and calculate og->cost as the sum of all found objects.
+int obj_back_trace (void)
+// we seam to have found some objects ... trace all of them back ot where they started.
+// return a generation number *near* the time the latest of them appeared.
 
 {
-  int i, j, x, y, t, l, b, r, dx, dy;
+  int i, g, max = 0;
+  found *o;
 
-  // First: initialize og, assuming we did'nt find nothing.
-  og->cost = 0;
-  og->nrFoundObjects = 0;
-
-  // Try all our objects
-  for (i = 0; i < og->nrObjectRefs; i++)
+  for (i = 0; i < nFound; i++)
     {
-      object *o = og->objectRefs [i].obj;
+      int dx, dy;
 
-      // Try all phases of the current object.
-      for (j = 0; j < o->nrPhases; j++)
+      o = &findings [i];
+      pat_compact (o->obj->pat, temp2);	// ouch my neck??
+      pat_shrink_bbox (temp2);
+      pat_compact (temp2, temp);	// ouch my neck??
+
+      // For easy removeal without knowing all phases of the found objects we assume that P4 will work ...
+      // TO DO: re-implement this to correctly work with other periods!
+      if (o->obj->dt != 1 && o->obj->dt != 2 && o->obj->dt != 4)
 	{
-	  phase *ph = &o->phases [j];
-	  pattern *pat = ph->pat;
-
-	  assert (pat->top == 0);
-	  assert (pat->left == 0);
-
-	  // Take the following into account:
-	  //        - both pattern and obj->pat are surronded by a frame of non-ALIVE cells.
-	  //        - Checking for objects outside of the pattern is pointless and even dangerous (segfault anyone?)
-	  t = lab [g].top + (ph->firstY-1);
-	  l = lab [g].left + (ph->firstX-1);
-	  b = lab [g].bottom - (pat->bottom - 1 - ph->firstY);
-	  r = lab [g].right - (pat->right - 1 - ph->firstX);
-	  for (y = t; y <= b; y++)
-	    for (x = l; x <= r; x++)
-	      if (lab [g].cell [y][x] == ALIVE)
-		{
-		  int OK = true;
-		  for (dy = 0; OK && dy <= pat->bottom; dy++)
-		    for (dx = 0; OK && dx <= pat->right; dx++)
-		      if (pat->cell [dy][dx] != UNDEF && pat->cell [dy][dx] != lab [g].cell [y-ph->firstY+dy][x-ph->firstX+dx])
-			OK = false;
-
-		  // Do we have a match? If yes: keep it!
-		  if (OK)
-		    {
-		      if (og->nrFoundObjects >= MAX_FIND)
-			{
-			  fprintf (stderr, "Internal error, please increase MAX_FIND!\n");
-			  exit (3);
-			}
-
-		      og->foundObjects [og->nrFoundObjects  ].what = o;
-		      og->foundObjects [og->nrFoundObjects  ].minGeneration = g;
-		      og->foundObjects [og->nrFoundObjects  ].maxGeneration = g;
-		      og->foundObjects [og->nrFoundObjects  ].foundGen = g;
-		      og->foundObjects [og->nrFoundObjects  ].foundX = x - o->phases [j].offX - ph->firstX + 1;
-		      og->foundObjects [og->nrFoundObjects  ].foundY = y - o->phases [j].offY - ph->firstY + 1;
-		      og->foundObjects [og->nrFoundObjects++].foundPhase = j;
-		      og->cost += og->objectRefs [i].cost;
-		    }
-		}
+	  fprintf (stderr, "Internal error: period must be 1, 2 or 4! [NYI] other periods not implemented yet!");
+	  exit (3);
 	}
+
+      dx = (4/o->obj->dt) * o->obj->dx;
+      dy = (4/o->obj->dt) * o->obj->dy;
+
+      // search for the first appearance of every object.
+      for (; o->gen >= 4; o->gen -= 4, o->offX -= dx, o->offY -= dy)
+	if (!pat_match (&lab [o->gen-4], o->offX-dx, o->offY-dy, temp))
+	  break;
+
+      // track the latest object!
+      if (max < o->gen)
+	max = o->gen;
     }
+
+  // strip all them objects off.
+  for (i = 0; i < nFound; i++)
+    {
+      int x, y;
+
+      o = &findings [i];
+      x = o->offX + o->obj->dx * ((max-o->gen)/o->obj->dt);
+      y = o->offY + o->obj->dy * ((max-o->gen)/o->obj->dt);
+
+      pat_remove (&lab [max], x, y, temp);
+    }
+
+  return max;
 }
 
 
+
+found *obj_search (int gen, object *objs, int *n)
+// Try to find the objects in *objs in generation gen.
+// If dir tells us so, we then search of the first or last of each found object.
+
+{
+  int x, y, t, l, b, r, dx, dy;
+
+  // We have not found anything ... yet!
+  nFound = 0;
+
+  // Try all our objects
+  object *o;
+  for (o = objs; o->name; o++)
+    {
+      pattern *pat = o->pat;
+
+      assert (pat->top == 0);
+      assert (pat->left == 0);
+
+      // Take the following into account:
+      //        - both pattern and obj->pat are surronded by a frame of non-ALIVE cells.
+      //        - Checking for objects outside of the pattern is pointless and even dangerous (segfault anyone?)
+      t = lab [gen].top + (o->firstY-1);
+      l = lab [gen].left + (o->firstX-1);
+      b = lab [gen].bottom - (pat->bottom - 1 - o->firstY);
+      r = lab [gen].right - (pat->right - 1 - o->firstX);
+      for (y = t; y <= b; y++)
+	for (x = l; x <= r; x++)
+	  if (lab [gen].cell [y][x] == ALIVE)
+	    {
+	      int OK = true;
+	      for (dy = 0; OK && dy <= pat->bottom; dy++)
+		for (dx = 0; OK && dx <= pat->right; dx++)
+		  if (pat->cell [dy][dx] != UNDEF && pat->cell [dy][dx] != lab [gen].cell [y-o->firstY+dy][x-o->firstX+dx])
+		    OK = false;
+
+	      // Do we have a match? If yes: keep it!
+	      if (OK)
+		{
+		  if (nFound >= MAX_FIND)
+		    fprintf (stderr, "INFO: obj_search: hit discarded because of MAX_FIND!\n");
+		  else
+		    {
+		      findings [nFound  ].obj = o;
+		      findings [nFound  ].gen = gen;
+		      findings [nFound  ].offX = x - o->firstX + 1;
+		      findings [nFound++].offY = y - o->firstY + 1;
+		    }
+		}
+	    }
+    }
+
+  *n = nFound;
+  return findings;
+}
+
+
+/*
 bool phase_match (phase *ph, int g, int x, int y)
 
 {
@@ -934,59 +987,6 @@ bool phase_match (phase *ph, int g, int x, int y)
 }
 
 
-void objgrp_trace (objectGroup *og, direction dir)
-
-{
-  int g, i, j, p;
-  object *o;
-
-  switch (dir)
-    {
-      case dir_forward:
-	for (i = 0; i < og->nrFoundObjects; i++)
-	  {
-	    o = og->foundObjects [i].what;
-	    j = 0;
-	    p = og->foundObjects [i].foundPhase;
-	    for (g = og->foundObjects [i].foundGen; g < maxGen; g++, p++)
-	      {
-		if (p >= o->nrPhases)
-		  {
-		    p = 0;
-		    j++;
-		  }
-		if (phase_match (&o->phases [p], g, og->foundObjects [i].foundX + j*o->dx, og->foundObjects [i].foundY + j*o->dy))
-		  og->foundObjects [i].maxGeneration = g;
-		else
-		  break;
-	      }
-	  }
-	break;
-      case dir_back:
-	for (i = 0; i < og->nrFoundObjects; i++)
-	  {
-	    o = og->foundObjects [i].what;
-	    j = 0;
-	    p = og->foundObjects [i].foundPhase;
-	    for (g = og->foundObjects [i].foundGen; g >= 0; g--, p--)
-	      {
-		if (p < 0)
-		  {
-		    p = o->nrPhases-1;
-		    j++;
-		  }
-		if (phase_match (&o->phases [p], g, og->foundObjects [i].foundX - j*o->dx, og->foundObjects [i].foundY - j*o->dy))
-		  og->foundObjects [i].minGeneration = g;
-		else
-		  break;
-	      }
-	  }
-	break;
-      //case dir_undef:
-      default:
-	assert (0);
-    }
-}
 */
 
 
@@ -1042,78 +1042,73 @@ bool pat_match (pattern *p1, int offX, int offY, pattern *p2)
 }
 
 
-static int pat_x_distance (pattern *p1, pattern *p2, int offX, int offY)
-// Helpder: check if the x component of the bbox of p2 translated by (offX, offY) overlaps the bbox of p1
+static int tgt_x_distance (const target *const t, pattern *p, int offX, int offY)
+// Helpder: check if the x component of the bbox of p translated by (offX, offY) overlaps the bbox of t
 
 {
-  if (p1->right < p2->left+offX)
-    return p2->left+offX - p1->right;
-  if (p1->left > p2->right+offX)
-    return p1->left - (p2->right+offX);
+  if (t->right < p->left+offX)
+    return p->left+offX - t->right;
+  if (t->left > p->right+offX)
+    return t->left - (p->right+offX);
   return 0;
 }
 
 
-static int pat_y_distance (pattern *p1, pattern *p2, int offX, int offY)
-// Helpder: check if the y component of the bbox of p2 translated by (offX, offY) overlaps the bbox of p1
+static int tgt_y_distance (const target *const t, pattern *p, int offX, int offY)
+// Helpder: check if the y component of the bbox of p translated by (offX, offY) overlaps the bbox of t
 
 {
-  if (p1->bottom < p2->top+offY)
-    return p2->top+offY - p1->bottom;
-  if (p1->top > p2->bottom+offY)
-    return p1->top - (p2->bottom+offY);
+  if (t->bottom < p->top+offY)
+    return p->top+offY - t->bottom;
+  if (t->top > p->bottom+offY)
+    return t->top - (p->bottom+offY);
   return 0;
 }
 
 
-
-void pat_collide (pattern *target, bullet *b, int lane, int *fly_x, int *fly_y, int *fly_dt)
+void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int *fly_y, int *fly_dt)
 // TO DO: chk 4 overflow!!
 
 {
-  int x, y, dx, dy, dt, tt, tb, tl, tr;
+  int x, y, dx, dy, dt;
 
   assert (b);
   assert (b->p && H(b->p) > 0);
-  assert (target && H(target) > 0);
-  assert (b->dx != 0 || d->dy != 0);
+  assert (tgt && tgt->pat && H(tgt->pat) > 0);
+  assert (b->dx != 0 || b->dy != 0);
   assert (b->lane_dx != 0 || b->lane_dy != 0);
   assert (b->p->top == 0 && b->p->left == 0);
-  assert (target->top == 0 && target->left == 0);
+  assert (tgt->pat->top == 0 && tgt->pat->left == 0);
 
   // TO elim this??
   pat_fill (&lab [0], DEAD);
-  pat_copy  (&lab [0], (lab [0].sizeX-W(target))/2, (lab [0].sizeY-H(target))/2, target);
-  tt = lab [0].top;
-  tb = lab [0].bottom;
-  tl = lab [0].left;
-  tr = lab [0].right;
+  pat_copy  (&lab [0], tgt->X, tgt->Y, tgt->pat);
 
   // Find out where to place the bullet.
   switch (b->reference)
     {
       case topleft:
-	x = lab [0].left;
-	y = lab [0].top;
+	x = tgt->left;
+	y = tgt->top;
 	break;
       case topright:
-	x = lab [0].right;
-	y = lab [0].top;
+	x = tgt->right;
+	y = tgt->top;
 	break;
       case bottomleft:
-	x = lab [0].left;
-	y = lab [0].bottom;
+	x = tgt->left;
+	y = tgt->bottom;
 	break;
       case bottomright:
-	x = lab [0].right;
-	y = lab [0].bottom;
+	x = tgt->right;
+	y = tgt->bottom;
 	break;
     }
 
   x += b->base_x + lane*b->lane_dx;
   y += b->base_y + lane*b->lane_dy;
-  dx = pat_x_distance (&lab [0], b->p, x, y);
-  dy = pat_y_distance (&lab [0], b->p, x, y);
+  dx = tgt_x_distance (tgt, b->p, x, y);
+  dy = tgt_y_distance (tgt, b->p, x, y);
 
   // Avoid unneccessary pregap.
   if (b->lane_dx == 0 && b->lane_dy < 0 && dy > 3 && b->dy > 0)
@@ -1145,6 +1140,7 @@ void pat_collide (pattern *target, bullet *b, int lane, int *fly_x, int *fly_y, 
     }
 
   pat_add  (&lab [0], x, y, b->p);
+  // pat_envelope (&lab [0]);
 
   // calculate coordinates for fly-by detection.
   // Fly-by means that neither the bullet nor the target is (permanetly) altered by the reaction.
@@ -1154,21 +1150,21 @@ void pat_collide (pattern *target, bullet *b, int lane, int *fly_x, int *fly_y, 
   dt = MAXGEN;	// hopefully > *fly_dt to find
   if (b->dx > 0)
     {
-      dx = tr + 3 - x;
+      dx = tgt->right + 3 - x;
       dx = (dx + b->dx-1) / b->dx;
       if (dx <= 0) { fprintf (stderr, "Internal error pat_collide(b->dx>0) -> fly-by-dx <= 0!\n"); exit (3); }
       dt = dx*b->dt;
     }
   else if (b->dx < 0)
     {
-      dx = x + b->p->right + 3 - tl;
+      dx = x + b->p->right + 3 - tgt->left;
       dx = (dx + b->dx-1) / b->dx;
       if (dx <= 0) { fprintf (stderr, "Internal error pat_collide(b->dx<0) -> fly-by-dx <= 0!\n"); exit (3); }
       dt = dx*b->dt;
     }
   if (b->dy > 0)
     {
-      dy = tb + 3 - y;
+      dy = tgt->bottom + 3 - y;
       dy = (dy + b->dy-1) / b->dy;
       if (dy <= 0) { fprintf (stderr, "Internal error pat_collide(b->dy>0) -> fly-by-dy <= 0!\n"); exit (3); }
       if (dt >= dy*b->dt)
@@ -1176,7 +1172,7 @@ void pat_collide (pattern *target, bullet *b, int lane, int *fly_x, int *fly_y, 
     }
   else if (b->dy < 0)
     {
-      dy = y + b->p->bottom + 3 - tt;
+      dy = y + b->p->bottom + 3 - tgt->top;
       dy = (dy + b->dy-1) / b->dy;
       if (dy <= 0) { fprintf (stderr, "Internal error pat_collide(b->dx<0) -> fly-by-dy <= 0!\n"); exit (3); }
       if (dt >= dy*b->dt)
@@ -1188,8 +1184,17 @@ void pat_collide (pattern *target, bullet *b, int lane, int *fly_x, int *fly_y, 
 }
 
 
-int pat_count_lanes (pattern *target, bullet *b)
+int tgt_count_lanes (const target *const tgt, bullet *b)
 
 {
-  return W(target)*b->lanes_per_width + H(target)*b->lanes_per_height + b->extra_lanes;
+  assert (tgt && tgt->pat);
+
+  return W(tgt->pat)*b->lanes_per_width + H(tgt->pat)*b->lanes_per_height + b->extra_lanes;
+}
+
+
+bool pat_touches_border (pattern *p)
+
+{
+  return (p->top <= 2 || p->left <= 2 || p->bottom >= p->sizeY - 3 || p->right >= p->sizeX - 3);
 }

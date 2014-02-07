@@ -35,7 +35,7 @@ main (int argc, char **argv)
   FILE *f;
   int i, j;
 
-  lab_allocate (20, 20, 5);
+  lab_allocate (20, 20, 5, 2);
 
   for (i = 0; i < (sizeof (ships) / sizeof (char*)); i++)
     {
@@ -50,7 +50,7 @@ if (!f) { perror (fname); exit (2); }
 	pat_generate (&lab [j], &lab [j+1]);
 
       for (j = 0; j < 4; j++)
-        printf ("INSERT INTO space_ships VALUES (NULL, '%s', '%s:%d', %d, %d, %d, %d, 4);\n", pat_rle (&lab [j]), ships [i], j, W(&lab[j]), H(&lab[j]), lab[4].top-lab[0].top, lab[4].left-lab[0].left);
+        printf ("INSERT INTO space_ships VALUES (NULL, '%s', '%s:%d', %d, %d, %d, %d, 4);\n", pat_rle (&lab [j]), ships [i], j, W(&lab[j]), H(&lab[j]), lab[4].left-lab[0].left, lab[4].top-lab[0].top);
     }
 }
 
