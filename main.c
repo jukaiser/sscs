@@ -2,245 +2,24 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <assert.h>
 
 #include "config.h"
 #include "pattern.h"
+#include "guarded_ptr.h"
+#include "reaction.h"
 #include "database.h"
 #include "queue.h"
-#include "guided_ptr.h"
-
-
-typedef struct
-   {
-     int     cost;
-     guided *g_tgt;
-     bullet *bullet;
-     int     lane;
-   } reaction;
-
-
-target *tgt;
-bullet *b;
-reaction *r;
-guided *gp;
-object *ships;
-
-
-static void dies_at (reaction *r, int i)
-
-{
-  printf ("Reaction (%d, %p, %s, %d): dies at %d\n", r->cost, ((target *)r->g_tgt->ptr)->pat, r->bullet->name, r->lane, i);
-  pat_dump (&lab [0]);
-  printf ("\n");
-}
-
-
-static void explodes_at (reaction *r, int i)
-
-{
-  printf ("Reaction (%d, %p, %s, %d): leaves lab [%d, %d]  at %d\n", r->cost, ((target *)r->g_tgt->ptr)->pat, r->bullet->name, r->lane, lab[0].sizeX, lab [0].sizeY, i);
-  pat_dump (&lab [0]);
-  printf ("\n");
-}
-
-
-static void emmit (reaction *r, int gen, int offX, int offY, pattern *what)
-
-{
-  printf ("Reaction (%d, %p, %s, %d): emmits space ship at %d\n", r->cost, ((target *)r->g_tgt->ptr)->pat, r->bullet->name, r->lane, gen);
-  pat_dump (&lab [0]);
-  printf ("emitted (%d,%d):\n", offX, offY);
-  pat_dump (what);
-  printf ("\n");
-}
-
-
-static void fly_by (reaction *r, int i)
-
-{
-  printf ("Reaction (%d, %p, %s, %d): bullet '%s' flies by target!\n", r->cost, ((target *)r->g_tgt->ptr)->pat, r->bullet->name, r->lane, r->bullet->name);
-  pat_dump (&lab [0]);
-  printf ("\n");
-}
-
-
-static void stabilizes (reaction *r, int i, int p)
-
-{
-  printf ("Reaction (%d, %p, %s, %d): stabilizes at %d [period %d]!\n", r->cost, ((target *)r->g_tgt->ptr)->pat, r->bullet->name, r->lane, i, p);
-  pat_dump (&lab [0]);
-  pat_dump (&lab [i]);
-  printf ("\n");
-}
-
-
-static void unstable (reaction *r, int i)
-
-{
-  printf ("Reaction (%d, %p, %s, %d): not stabilized after %d!\n", r->cost, ((target *)r->g_tgt->ptr)->pat, r->bullet->name, r->lane, i);
-  pat_dump (&lab [0]);
-  pat_dump (&lab [MAXGEN]);
-  printf ("\n");
-}
-
-
-int search_ships (reaction *r, int gen)
-// TO DO: back trace support!!
-
-{
-  found *f;
-  int i, n;
-
-  // Search for escaping space ships
-  f = obj_search (gen, ships, &n);
-  if (n < 1)
-    return gen;
-
-  // We know that at the current generation all objects in f have been around.
-  // Find the point in time where the last ship appeared and remove them all.
-  gen = obj_back_trace ();
-
-  // Show the emitted ships
-  for (i = 0; i < n; i++)
-    emmit (r, f->gen, f->offX, f->offY, f->obj->pat);
-
-  pat_dump (&lab [gen]);
-
-  // maybe we are now smaller?
-  pat_shrink_bbox (&lab [gen]);
-
-  return gen;
-}
-
-
-static void handle (reaction *r)
-
-{
-  int flyX, flyY, flyGen, i, p;
-  target *tgt = r->g_tgt->ptr;
-
-  // Build collision defined by our reaction -> lab [0]
-  lab_init ();
-  tgt_collide (tgt, r->bullet, r->lane, &flyX, &flyY, &flyGen);
-
-  // Fly-by detection ... generate until bullet would by definetly beyound target.
-  for (i = 1; i <= flyGen; i++)
-    if (!pat_generate (&lab [i-1], &lab [i]))
-      {
-	dies_at (r, i);
-	return;
-      }
-
-  if (pat_match (&lab [flyGen], flyX, flyY, r->bullet->p))
-    {
-      int keep = flyGen-1;
-      pat_remove (&lab [flyGen], flyX, flyY, r->bullet->p);
-//       printf ("maybe fly-by (%d):\n", flyGen);
-// if (W(&lab [flyGen]) <= 0) { printf ("WOOT?\n"); for (i = 0; i < flyGen; i++) pat_dump (&lab [i]); exit (0); }
-
-      // Synchronise reaction with the uncollided target
-      while (flyGen % tgt->nph)
-	{
-	  if (!pat_generate (&lab [flyGen], &lab [flyGen+1]))
-	    {
-	      dies_at (r, flyGen+1);
-	      return;
-	    }
-
-	  flyGen++;
-	}
-
-      if (pat_match (&lab [flyGen], tgt->X, tgt->Y, tgt->pat))
-	{
-	  pat_remove (&lab [flyGen], tgt->X, tgt->Y, tgt->pat);
-	  if (W(&lab [flyGen]) <= 0)
-	    {
-	      fly_by (r, i);
-	      return;
-	    }
-	}
-
-      // OK. The bullet escapes. But the target did not survive unharmed. Note the escaping ship and continue!
-      emmit (r, keep, flyX, flyY, r->bullet->p);
-    }
-
-  // Here: no fly by. Follow the reaction until it stabilizes.
-  for (i = flyGen+1; i <= MAXGEN+2; i++)
-    {
-      if (!pat_generate (&lab [i-1], &lab [i]))
-	{
-	  dies_at (r, i);
-	  return;
-	}
-      else if (pat_touches_border (&lab [i]))
-	{
-	  i = search_ships (r, i);
-
-	  if (!W(&lab [i]))
-	    {
-	      dies_at (r, i);
-	      return;
-	    }
-	  else if (pat_touches_border (&lab [i]))
-	    {
-	      explodes_at (r, i);
-	      return;
-	    }
-	}
-
-      // Stabilized? Just check for P2 here, because that's cheap and anything P3 or beyond is *very* rare.
-      if (i-2 >= 0 && pat_compare (&lab [i], &lab [i-2]))
-	{
-	  p = 2;
-	  if (pat_compare (&lab [i-1], &lab [i-2]))
-	    p = 1;
-
-	  stabilizes (r, i-2, p);
-	  return;
-	}
-    }
-
-  // OK. lab [MAXGEN] is neither a still life nor a P2
-  // Check for P>2 now.
-  for (p = 3; p <= MAXPERIOD; p++)
-    {
-      // Welll. It COULD die even now ... so what.
-      if (!pat_generate (&lab [MAXGEN + p-1], &lab [MAXGEN + p]))
-	{
-	  dies_at (r, MAXGEN + p);
-	  return;
-	}
-      else if (pat_touches_border (&lab [MAXGEN + p]))
-	{
-	  explodes_at (r, MAXGEN + p);
-	  return;
-	}
-
-      // Check if lab [] repeats with delta = p
-      if (pat_compare (&lab [MAXGEN + p], &lab [MAXGEN]))
-	{
-	  // It really is a high period osci!
-	  // Trace back to where it started!
-	  for (i = MAXGEN; i >= p; i--)
-	    if (!pat_compare (&lab [i], &lab [i+p]))
-	      break;
-
-	  stabilizes (r, i, p);
-	  return;
-	}
-    }
-
-  // Me didn't find nuffin'!
-  unstable (r, MAXGEN);
-}
 
 
 main (int argc, char **argv)
 
 {
-  int i, j, nph, left, right, top, bottom;
+  int nph;
   FILE *f;
+  bullet *b;
+  reaction *r;
 
   if (argc != 2)
     {
@@ -253,12 +32,17 @@ main (int argc, char **argv)
   db_init ();
   queue_init ();
   lab_allocate (MAXWIDTH, MAXHEIGHT, MAXGEN+1+MAXPERIOD, MAX_FIND);
+  if (RELATIVE != 1)
+    {
+      fprintf (stderr, "Internal error: handling of non-relative lanes not implemented/undefined.\n");
+      exit (3);
+    }
 
   // load our bullet (lanes to use are defined with the bullet)
   b = db_bullet_load (BULLET);
 
-  // load all standard ships so we can search for them ;)
-  ships = db_load_space_ships ();
+  // Initialize the reaction handling module
+  init_reactions ();
 
   // Preload all combinations of a candidate starting pattern and a bullet on any significant lane into our q.
   if (chdir (PATH) != 0) {perror (PATH); exit (2);}
@@ -280,69 +64,30 @@ main (int argc, char **argv)
       if (nph > MAXPERIOD)
 	continue;
 
-      // calculate common bbox of all phases of current target.
-      top = MAXHEIGHT + 1;
-      bottom = -1;
-      left = MAXWIDTH + 1;
-      right = -1;
-      for (i = 0; i < nph; i++)
-	{
-	  if (lab [i].top    < top)    top    = lab [i].top;
-	  if (lab [i].bottom > bottom) bottom = lab [i].bottom;
-	  if (lab [i].left   < left)   left   = lab [i].left;
-	  if (lab [i].right  > right)  right  = lab [i].right;
-	}
+      // The first nph generations of our lab [] contain the different phases of the current starting pattern.
+      // extract them as targets.
+      build_targets (0, nph);
 
-      // Iterate over all phases ...
-      for (i = 0; i < nph; i++)
-	{
-	  tgt = malloc (sizeof (target));
-	  tgt->pat = pat_compact (&lab [i], NULL);
-	  tgt->nph = nph;
-	  tgt->top = top;
-	  tgt->bottom = bottom;
-	  tgt->left = left;
-	  tgt->right = right;
-	  tgt->X = lab [i].left;
-	  tgt->Y = lab [i].top;
-
-	  gp = guide_alloc (tgt);
-
-	  int n = tgt_count_lanes (tgt, b);
-	  if (LANES > 0 && LANES < n)
-	    n = LANES;
-	  for (j = 0; j < n; j++)
-	    {
-	      r = malloc (sizeof (reaction));
-	      if (!r) { perror ("malloc"); exit (2); }
-	      r->cost = 0;	// we're preloading!
-	      guide_link (gp);
-	      r->g_tgt = gp;
-	      r->bullet = b;
-	      r->lane = j;
-
-	      if (!queue_insert (r->cost, r))
-		{
-		  fprintf (stderr, "Q-insert failed!\n");
-		  exit (1);
-		}
-	    }
-	  }
+      // build all possible reactions for these targets, queue them for later analysis and check them against our db.
+      // NOTE: since we are handling starting patterns here, we don't have a "last lane used", yet.
+      build_reactions (nph, b, -1, -1);
     }
   fclose (f);
 
+  // main loop: take chepest reaction off the q, handle it (maybe queueing new reactions for later handling) and check if we could release some memory consuming objects.
+  // Rinse and repeat, until queue runs empty (extremly unlikely!) or we get kicked by our user.
   while (r = (reaction *) queue_grabfront ())
     {
       handle (r);
-getchar ();
-puts ("\033[H\033[2J");
+// getchar ();
+// puts ("\033[H\033[2J");
 
-      if (!guide_unlink (r->g_tgt))
+      if (!guard_unlink (r->g_tgt))
 	{
 	  pat_deallocate (((target*)r->g_tgt->ptr)->pat);
 	  free (((target *)r->g_tgt->ptr)->pat);
 	  free (r->g_tgt->ptr);
-	  guide_dealloc (r->g_tgt);
+	  guard_dealloc (r->g_tgt);
 	}
       free (r);
     }

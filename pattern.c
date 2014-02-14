@@ -32,10 +32,6 @@ void pat_init (pattern *p)
   assert (p->sizeY > 0);
   assert (p->sizeX > 0);
 
-
-  // pattern is not stored in DB ... as far as we known, that is.
-  p->id = 0;
-
   // memset (p->cell [0], DEAD, p->sizeY * p->sizeX);
   p->top    = 0;
   p->bottom = -1;
@@ -48,7 +44,6 @@ void pat_fill (pattern *p, char value)
 
 {
   memset (p->cell [0], value, p->sizeY * p->sizeX);
-  p->id = 0;
   p->top = 0;
   p->bottom = p->sizeY-1;
   p->left = 0;
@@ -154,8 +149,6 @@ void pat_shrink_bbox (pattern *p)
 {
   int x, y;
 
-  p->id = 0;
-
   if (H(p) <= 0) return;
 
   int  ymin = p->top, ymax = p->bottom;
@@ -204,9 +197,6 @@ bool pat_generate (pattern *p1, pattern *p2)
 {
   int neighbors [p2->sizeY][p2->sizeX];
   int x, y;
-
-  // p2 is about to be altered
-  p2->id = 0;
 
   // If p1 contains no living cells, then p2 won't either!
   if (H(p1) <= 0)
@@ -309,8 +299,6 @@ void pat_add (pattern *p1, int offX, int offY, pattern *p2)
       return;
     }
 
-  p2->id = 0;
-
   assert (offY + p2->bottom < p1->sizeY);
   assert (offX + p2->right < p1->sizeX);
 
@@ -352,8 +340,6 @@ void pat_copy (pattern *p1, int offX, int offY, pattern *p2)
 {
   int x, y;
 
-  p2->id = 0;
-
   assert (offY + p2->bottom < p1->sizeY);
   assert (offX + p2->right < p1->sizeX);
 
@@ -375,8 +361,6 @@ void pat_remove (pattern *p1, int offX, int offY, pattern *p2)
 {
   int x, y;
 
-  p2->id = 0;
-
   assert (offY + p2->bottom < p1->sizeY);
   assert (offX + p2->right < p1->sizeX);
 
@@ -394,8 +378,6 @@ void pat_envelope (pattern *pat)
 
 {
   int x, y;
-
-  pat->id = 0;
 
   // Sanity check - pat must be valid and have enough space left.
   assert (pat);

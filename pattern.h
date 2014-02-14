@@ -9,8 +9,6 @@ typedef unsigned long long ROWID;
 // pattern and stuff
 typedef struct
   {
-// TO DO: move id -> target??
-    ROWID    id;			// ROW ID in database table (0 if not yet stored!)
     int top, bottom, left, right;	// bounding box
     int sizeX, sizeY;			// actual size of cell [][]
     char **cell;			// 2dim array of cells (cell [Y][X] == ALIVE ...)
@@ -21,6 +19,7 @@ typedef struct
   {
     ROWID   id;				// ROW ID in database table
     char    *name;			// name to access/reference this bullet.
+    ROWID   oId;			// id of the corresponding object
     pattern *p;
     int     dx, dy, dt;			// speed and period of the bullet
     int     base_x, base_y;		// Where will lane 0 be?
@@ -30,10 +29,10 @@ typedef struct
     int	    lanes_per_height;
     int	    extra_lanes;
   } bullet;
-    
 
 typedef struct
   {
+    ROWID    id;			// ROW ID in database table (0 if not yet stored!)
     pattern *pat;			// actual pattern to use as target
     int      nph;			// period of pattern
     int      top, bottom, left, right;	// combined bbox of all phases of this target
@@ -49,7 +48,6 @@ typedef struct
     int      dx, dy, dt;		// speed and period of the object (if applicable)
 					// dx=dy=0, dt=1 -> still life, dx=dy=0, dt>1 osci
   } object;
-
 
 typedef struct
   {

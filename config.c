@@ -32,9 +32,23 @@ int   DBPORT	  = 3306;
 char *DBNAME	  = "gol";
 char *DBUSER	  = "gol";
 char *DBPASSWD    = "";
-char *SQL_F_BULLET = "SELECT bId, rle, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes FROM bullets WHERE name = '%s'";
-char *SQL_COUNT_SPACESHIPS = "SELECT COUNT(*) FROM space_ships";
-char *SQL_SPACESHIPS = "SELECT sId, rle, name, dx, dy, dt FROM space_ships";
+// char *SQL_F_BULLET = "SELECT bId, oId, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes FROM bullets WHERE name = '%s'";
+char *SQL_F_BULLET =
+	"SELECT bId, b.oId, rle, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes "
+		"FROM bullets b LEFT JOIN objects USING (oId) WHERE b.name = '%s'";
+char *SQL_F_SEARCH_TARGET = "SELECT tId FROM target WHERE rle = '%s'";
+char *SQL_F_STORE_TARGET =
+	"INSERT INTO target (tId, rle, width, height, combined_width, combined_height, offX, offY, is_stable, period, next_tId) "
+		"VALUES (NULL, '%s', %d, %d, %d, %d, %d, %d, 'true', %d, NULL)";
+char *SQL_F_LINK_TARGET = "UPDATE target SET next_tId = %llu WHERE tId = %llu";
+char *SQL_F_FETCH_REACTION = "SELECT rId, result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %d";
+char *SQL_F_IS_FINISHED_REACTION = "SELECT result FROM reaction WHERE rId = %llu";
+char *SQL_F_STORE_REACTION = "INSERT INTO reaction (rId, initial_tId, bId, lane) VALUES (NULL, %llu, %llu, %d)";
+char *SQL_F_REACTION_EMITS = "UPDATE reaction SET emits_ships = 'true' WHERE rId = %llu";
+char *SQL_F_FINISH_REACTION = "UPDATE reaction SET result_tId = %llu, offX = %d, offY = %d, gen = %d, result = '%s' WHERE rId = %llu";
+char *SQL_F_STORE_EMIT = "INSERT INTO emitted (eId, rId, oId, offX, offY, gen) VALUES (NULL, %llu, %llu, %d, %d, %d)";
+char *SQL_COUNT_SPACESHIPS = "SELECT COUNT(*) FROM objects WHERE dx <> 0 OR dy <> 0";
+char *SQL_SPACESHIPS = "SELECT oId, rle, name, dx, dy, dt FROM objects WHERE dx <> 0 OR dy <> 0";
 
 
 // <- config.h
@@ -74,6 +88,15 @@ static cfg_var config [] =
     {"DBUSER",		STRING,  &DBUSER},
     {"DBPASSWD",	STRING,  &DBPASSWD},
     {"SQL_F_BULLET",	STRING,	 &SQL_F_BULLET},
+    {"SQL_F_SEARCH_TARGET", STRING, &SQL_F_SEARCH_TARGET},
+    {"SQL_F_STORE_TARGET", STRING, &SQL_F_STORE_TARGET},
+    {"SQL_F_LINK_TARGET", STRING, &SQL_F_LINK_TARGET},
+    {"SQL_F_FETCH_REACTION", STRING, &SQL_F_FETCH_REACTION},
+    {"SQL_F_IS_FINISHED_REACTION", STRING, &SQL_F_IS_FINISHED_REACTION},
+    {"SQL_F_STORE_REACTION", STRING, &SQL_F_STORE_REACTION},
+    {"SQL_F_REACTION_EMITS", STRING, &SQL_F_REACTION_EMITS},
+    {"SQL_F_FINISH_REACTION", STRING, &SQL_F_FINISH_REACTION},
+    {"SQL_F_STORE_EMIT", STRING, &SQL_F_STORE_EMIT},
     {"SQL_COUNT_SPACESHIPS", STRING, &SQL_COUNT_SPACESHIPS},
     {"SQL_SPACESHIPS",  STRING, &SQL_SPACESHIPS},
     {NULL}

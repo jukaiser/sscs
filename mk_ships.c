@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "config.h"
 #include "pattern.h"
@@ -31,7 +32,7 @@ char *ships [] =
 main (int argc, char **argv)
 
 {
-  char fname [1024];
+  char fname [1024], *rle;
   FILE *f;
   int i, j;
 
@@ -50,7 +51,12 @@ if (!f) { perror (fname); exit (2); }
 	pat_generate (&lab [j], &lab [j+1]);
 
       for (j = 0; j < 4; j++)
-        printf ("INSERT INTO space_ships VALUES (NULL, '%s', '%s:%d', %d, %d, %d, %d, 4);\n", pat_rle (&lab [j]), ships [i], j, W(&lab[j]), H(&lab[j]), lab[4].left-lab[0].left, lab[4].top-lab[0].top);
+	{
+	  rle = pat_rle (&lab [j]);
+	  printf ("INSERT INTO objects VALUES (NULL, '%s', '%s:%d', %d, %d, %d, %d, 4);\n", rle, ships [i], j, W(&lab[j]), H(&lab[j]), lab[4].left-lab[0].left, lab[4].top-lab[0].top);
+	  if (strcmp (rle, "o$b2o$2o!") == 0)
+	    printf ("INSERT INTO bullets VALUES (1,'gl-se',LAST_INSERT_ID(),-4,0,'BOTTOMLEFT',0,-1,1,1,8);\n");
+	}
     }
 }
 
