@@ -47,6 +47,7 @@ typedef struct
     int      firstX, firstY;		// coord's of first ALIVE pixel in pat
     int      dx, dy, dt;		// speed and period of the object (if applicable)
 					// dx=dy=0, dt=1 -> still life, dx=dy=0, dt>1 osci
+    bool     wanted;			// if wanted == false: prune current reaction!
   } object;
 
 typedef struct
@@ -72,7 +73,7 @@ bool pat_match (pattern *p1, int offX, int offY, pattern *p2);
 void pat_remove (pattern *p1, int offX, int offY, pattern *p2);
 void pat_load (FILE *f);
 void pat_from_string (const char *str);
-bool pat_touches_border (pattern *p);
+bool pat_touches_border (pattern *p, int dist);
 char *pat_rle (pattern *pat);
 bool pat_compare (pattern *p1, pattern *p2);
 void obj_mark_first (object *p);
@@ -82,8 +83,10 @@ int obj_back_trace (void);
 void lab_allocate (int _maxX, int _maxY, int _maxGen, int _maxFind);
 void lab_init (void);
 
+void tgt_center (target *tgt);
 void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int *fly_y, int *fly_dt);
 int  tgt_count_lanes (const target *const tgt, bullet *b);
+int  tgt_adjust_lane (bullet *b, target *old, target *new);
 
 #define W(p)    ((p)->right-(p)->left+1)
 #define H(p)    ((p)->bottom-(p)->top+1)

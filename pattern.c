@@ -658,7 +658,7 @@ static void rle_append (char *tgt, int *pos, int nr, char c)
   // NOTE: maybe we won't fit if nr is way larger then 10 ... but since we're using snprintf in this case, at least we won't crash
   if (*pos >= MAX_RLE || (nr > 1 && *pos >= MAX_RLE-1))
     {
-      fprintf (stderr, "RLE too large - adjust MAX_RLE and recompile!\n");
+      fprintf (stderr, "RLE too large - adjust MAX_RLE!\n");
       exit (2);
     }
 
@@ -741,7 +741,7 @@ void pat_dump (pattern *p)
 {
   if (p)
     {
-      printf ("Pattern (%d,%d) [%d,%d,%d,%d]: %p\n", p->sizeY, p->sizeX, p->top, p->bottom, p->left, p->right, p->cell);
+      printf ("Pattern (sY=%d,sx=%d) [top=%d,bottom=%d,left=%d,right=%d]: %p {cx=%d,cy=%d}\n", p->sizeY, p->sizeX, p->top, p->bottom, p->left, p->right, p->cell, (p->left+p->right)/2, (p->top+p->bottom)/2);
       if (p->cell)
 	{
 	  int x, y;
@@ -912,6 +912,9 @@ found *obj_search (int gen, object *objs, int *n)
 
       assert (pat->top == 0);
       assert (pat->left == 0);
+if (lab[gen].top <= 0 || lab[gen].left <= 0) {pat_dump (&lab[gen]); pat_dump (pat); pat_dump (&lab [0]); printf("gen=%d, prevtop=%d, prevleft=%d\n", gen, lab[gen-1].top, lab[gen-1].left);}
+      assert (lab[gen].top > 0);
+      assert (lab[gen].left > 0);
 
       // Take the following into account:
       //        - both pattern and obj->pat are surronded by a frame of non-ALIVE cells.
@@ -933,6 +936,9 @@ found *obj_search (int gen, object *objs, int *n)
 	      // Do we have a match? If yes: keep it!
 	      if (OK)
 		{
+		  // did we find something unwanted??
+		  if (!o->wanted)
+		    return NULL;
 		  if (nFound >= MAX_FIND)
 		    fprintf (stderr, "INFO: obj_search: hit discarded because of MAX_FIND!\n");
 		  else
@@ -1045,6 +1051,26 @@ static int tgt_y_distance (const target *const t, pattern *p, int offX, int offY
   if (t->top > p->bottom+offY)
     return t->top - (p->bottom+offY);
   return 0;
+}
+
+
+void tgt_center (target *tgt)
+// Center pattern within [0,0,lab->sizeX,lab->sizeY]
+
+{
+  int dx, dy;
+
+//printf ("tgt_center (top=%d, bottom=%d, left=%d, right=%d, X=%d, Y=%d): ", tgt->top, tgt->bottom, tgt->left, tgt->right, tgt->X, tgt->Y);
+  dy = tgt->top - (lab [0].sizeY-H(tgt))/2;
+  dx = tgt->left - (lab [0].sizeX-W(tgt))/2;
+  tgt->top -= dy;
+  tgt->bottom -= dy;
+  tgt->Y -= dy;
+  tgt->left -= dx;
+  tgt->right -= dx;
+  tgt->X -= dx;
+//printf ("[dx=%d,dy=%d] -> (top=%d, bottom=%d, left=%d, right=%d, X=%d, Y=%d)\n", dx, dy, tgt->top, tgt->bottom, tgt->left, tgt->right, tgt->X, tgt->Y);
+//printf ("Mitte: %d, %d\n", (tgt->left+tgt->right)/2, (tgt->top+tgt->bottom)/2);
 }
 
 
@@ -1175,8 +1201,29 @@ int tgt_count_lanes (const target *const tgt, bullet *b)
 }
 
 
-bool pat_touches_border (pattern *p)
+bool pat_touches_border (pattern *p, int dist)
 
 {
-  return (p->top <= 2 || p->left <= 2 || p->bottom >= p->sizeY - 3 || p->right >= p->sizeX - 3);
+  return (p->top <= dist || p->left <= dist || p->bottom >= p->sizeY - dist - 1 || p->right >= p->sizeX - dist - 1);
+}
+
+
+int tgt_adjust_lane (bullet *b, target *old, target *new)
+// Determine how much the current lane has ot be adjusted to reflect the changed bounding box from old -> new.
+// (The target will be recentered for the next collision)
+
+{
+  switch (b->reference)
+    {
+      case topleft:
+	// Lane numbering starts at the topleft corner. So: moving right or down means increasing the lane number.
+	return (new->top - old->top)*b->lanes_per_height + (new->left - old->left)*b->lanes_per_width;
+      case topright:
+	// Here: moving right *decreases* the lane number.
+	return (new->top - old->top)*b->lanes_per_height - (new->right - old->right)*b->lanes_per_width;
+      case bottomleft:
+	return -(new->bottom - old->bottom)*b->lanes_per_height + (new->left - old->left)*b->lanes_per_width;
+      case bottomright:
+	return -(new->bottom - old->bottom)*b->lanes_per_height - (new->right - old->right)*b->lanes_per_width;
+    }
 }

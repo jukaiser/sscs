@@ -5,7 +5,7 @@ void db_init (void);
 bullet *db_bullet_load (const char *name);
 object *db_load_space_ships (void);
 
-typedef enum {dbrt_undef, dbrt_dies, dbrt_flyby, dbrt_stable, dbrt_unfinished} db_reaction_type;
+typedef enum {dbrt_undef, dbrt_dies, dbrt_flyby, dbrt_stable, dbrt_pruned, dbrt_unfinished} db_reaction_type;
 
 void db_targets_keep (target **tgts, int nph);
 bool db_reaction_keep (reaction *r);

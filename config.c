@@ -12,6 +12,10 @@ char *PATH	  = "test";
 int   MAXCOST	  = 8192;
 int   MAXWIDTH	  = 128;
 int   MAXHEIGHT	  = 64;
+int   PRUNE_SX	  = 100;
+int   PRUNE_SY	  = 34;
+int  *SHIP_DIRS   = NULL;
+int  nSHIP_DIRS   = 0;
 int   MAXGEN	  = 256;
 int   MAXPERIOD   = 2;
 int   MAX_RLE	  = 4096;
@@ -19,8 +23,8 @@ char *BULLET	  = "glider_se_31_lanes";
 char *START	  = "start-targets.pat";
 int   MAX_FIND	  = 100;
 bool  SHIPMODE    = true;
-int   DX	  = 31;
-int   DY	  = 0;
+int   DX	  = 0;
+int   DY	  = -31;
 int   DT	  = 240;
 int   FACTOR	  = 1;
 int   LANES	  = 31;
@@ -38,14 +42,14 @@ char *SQL_F_BULLET =
 		"FROM bullets b LEFT JOIN objects USING (oId) WHERE b.name = '%s'";
 char *SQL_F_SEARCH_TARGET = "SELECT tId FROM target WHERE rle = '%s'";
 char *SQL_F_STORE_TARGET =
-	"INSERT INTO target (tId, rle, width, height, combined_width, combined_height, offX, offY, is_stable, period, next_tId) "
-		"VALUES (NULL, '%s', %d, %d, %d, %d, %d, %d, 'true', %d, NULL)";
+	"INSERT INTO target (tId, rle, width, height, combined_width, combined_height, offX, offY, period, next_tId) "
+		"VALUES (NULL, '%s', %d, %d, %d, %d, %d, %d, %d, NULL)";
 char *SQL_F_LINK_TARGET = "UPDATE target SET next_tId = %llu WHERE tId = %llu";
 char *SQL_F_FETCH_REACTION = "SELECT rId, result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %d";
-char *SQL_F_IS_FINISHED_REACTION = "SELECT result FROM reaction WHERE rId = %llu";
+char *SQL_F_IS_FINISHED_REACTION = "SELECT result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %d";
 char *SQL_F_STORE_REACTION = "INSERT INTO reaction (rId, initial_tId, bId, lane) VALUES (NULL, %llu, %llu, %d)";
 char *SQL_F_REACTION_EMITS = "UPDATE reaction SET emits_ships = 'true' WHERE rId = %llu";
-char *SQL_F_FINISH_REACTION = "UPDATE reaction SET result_tId = %llu, offX = %d, offY = %d, gen = %d, result = '%s' WHERE rId = %llu";
+char *SQL_F_FINISH_REACTION = "UPDATE reaction SET result_tId = %llu, offX = %d, offY = %d, gen = %d, result = '%s', cost = %d WHERE rId = %llu";
 char *SQL_F_STORE_EMIT = "INSERT INTO emitted (eId, rId, oId, offX, offY, gen) VALUES (NULL, %llu, %llu, %d, %d, %d)";
 char *SQL_COUNT_SPACESHIPS = "SELECT COUNT(*) FROM objects WHERE dx <> 0 OR dy <> 0";
 char *SQL_SPACESHIPS = "SELECT oId, rle, name, dx, dy, dt FROM objects WHERE dx <> 0 OR dy <> 0";
@@ -68,6 +72,9 @@ static cfg_var config [] =
     {"MAXCOST",		NUM,     &MAXCOST},
     {"MAXWIDTH",	NUM,     &MAXWIDTH},
     {"MAXHEIGHT",	NUM,     &MAXHEIGHT},
+    {"PRUNE_SX",	NUM,	 &PRUNE_SX},
+    {"PRUNE_SY",	NUM,	 &PRUNE_SY},
+    {"SHIP_DIRS",	N_ARRAY, &SHIP_DIRS, &nSHIP_DIRS},
     {"MAXGEN",		NUM,     &MAXGEN},
     {"MAXPERIOD",	NUM,     &MAXPERIOD},
     {"MAX_RLE",		NUM,     &MAX_RLE},
@@ -110,14 +117,29 @@ typedef struct
 
 static named_const constants [] =
   {
-    {"TRUE",  1},
-    {"ON",    1},
-    {"FALSE", 0},
-    {"OFF",   0},
-    {"STILL", 1},
+    {"TRUE",      (int)true},
+    {"ON",        (int)true},
+    {"FALSE",     (int)false},
+    {"OFF",       (int)false},
+    {"STILL",     1},
+    {"N",         (int) dir_north},
+    {"NORTH",     (int) dir_north},
+    {"NE",        (int) dir_northeast},
+    {"NORTHEAST", (int) dir_northeast},
+    {"E",         (int) dir_east},
+    {"EAST",      (int) dir_east},
+    {"SE",        (int) dir_southeast},
+    {"SOUTHEAST", (int) dir_southeast},
+    {"S",         (int) dir_south},
+    {"SOUTH",     (int) dir_south},
+    {"SW",        (int) dir_southwest},
+    {"SOUTHWEST", (int) dir_southwest},
+    {"W",	  (int) dir_west},
+    {"WEST",	  (int) dir_west},
+    {"NW",        (int) dir_north_west},
+    {"NORTHWEST", (int) dir_north_west},
     {NULL}
   };
-
 
 static int parse_constant (const char *var, const char **val)
 

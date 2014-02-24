@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <assert.h>
 
 #include "config.h"
@@ -17,6 +18,7 @@ typedef struct _entry
 static entry **qs = NULL;
 static int current = 0;
 static int max = -1;
+static int count = 0;
 
 
 void dump_qs ()
@@ -72,6 +74,7 @@ void queue_init (void)
     }
   current = 0;
   max = -1;
+  count = 0;
 }
 
 
@@ -91,13 +94,14 @@ bool queue_insert (int cost, void *val)
     }
 
   entry *e = (entry *) malloc (sizeof (entry));
-  if (!e) return false;
+  if (!e) {perror ("queue_insert - malloc"); exit (2);}
 
   // Insert new entry at front of q
   // Note: this results in a kind of "depth first" search. Salvos of several cheap bullets will be considered first.
   e->value = val;
   e->next = qs [cost];
   qs [cost] = e;
+  count++;
 
   return true;
 }
@@ -126,6 +130,14 @@ void *queue_grabfront (void)
   void *v = e->value;
   qs [current] = e->next;
   free (e);
+  count--;
 
   return v;
+}
+
+
+void queue_info (void)
+
+{
+  printf ("Q-Info: current=%d, max=%d, count=%d mem?%lu\n", current, max, count, (unsigned long) (sbrk(0)-(void*)qs));
 }

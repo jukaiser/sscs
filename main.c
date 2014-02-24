@@ -70,14 +70,16 @@ main (int argc, char **argv)
 
       // build all possible reactions for these targets, queue them for later analysis and check them against our db.
       // NOTE: since we are handling starting patterns here, we don't have a "last lane used", yet.
-      build_reactions (nph, b, -1, -1);
+      build_reactions (nph, b, true, -1, -1);
     }
   fclose (f);
 
   // main loop: take chepest reaction off the q, handle it (maybe queueing new reactions for later handling) and check if we could release some memory consuming objects.
   // Rinse and repeat, until queue runs empty (extremly unlikely!) or we get kicked by our user.
+  int o_cost = 0;
   while (r = (reaction *) queue_grabfront ())
     {
+if (o_cost < r->cost) queue_info (); o_cost = r->cost;
       handle (r);
 // getchar ();
 // puts ("\033[H\033[2J");

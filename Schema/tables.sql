@@ -57,14 +57,15 @@ CREATE TABLE reaction (
   offX int(11) NOT NULL,
   offY int(11) NOT NULL,
   gen int(11) NOT NULL,
-  result enum('dies','fly-by','stable','unfinished', 'explodes') DEFAULT NULL,
+  result enum('dies','fly-by','stable','unfinished', 'explodes','pruned') DEFAULT NULL,
   emits_ships enum('false','true') DEFAULT 'false',
-  summary varchar(4000) NOT NULL,
+  cost int(11) NOT NULL,
+  -- summary varchar(4000) NOT NULL,
   UNIQUE (initial_tId, bId, lane),
   KEY (result),
   KEY (initial_tId),
-  KEY (result_tId),
-  FULLTEXT INDEX (summary)
+  KEY (result_tId)
+  -- FULLTEXT INDEX (summary)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol' INDEX DIRECTORY = '/home/mysql-gol';
 
 DROP TABLE IF EXISTS target;
@@ -77,7 +78,7 @@ CREATE TABLE target (
   combined_height int(11),
   offX int(11),
   offY int(11),
-  is_stable enum('false','true') NOT NULL DEFAULT 'false',
+  -- is_stable enum('false','true') NOT NULL DEFAULT 'false',
   period int(11) NOT NULL,
   next_tId int(11) DEFAULT NULL,
 --  comment varchar(1000),

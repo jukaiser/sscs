@@ -17,4 +17,4 @@ mk_ships:	mk_ships.o pattern.o config.o
 	$(CC) $(CFLAGS) $(LIBS) -o mk_ships mk_ships.o pattern.o config.o
 
 clean:
-	rm mk_ships sscs *.o core test/core
+	rm show_reaction mk_ships sscs *.o core test/core

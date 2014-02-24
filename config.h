@@ -3,6 +3,8 @@
 #include <stdbool.h>
 
 
+typedef enum {dir_north, dir_northeast, dir_east, dir_southeast, dir_south, dir_southwest, dir_west, dir_north_west} ship_dirs;
+
 extern char *PATH;		// Where to look for files
 
 extern int   MAXCOST;		// Maximum cost of reaction chains we will look at.
@@ -28,6 +30,11 @@ extern int   DX;
 extern int   DY;
 extern int   DT;
 extern int   FACTOR;
+
+extern int   PRUNE_SX;		// max. size of a resulting target for further consideration.
+extern int   PRUNE_SY;
+extern int  *SHIP_DIRS;		// allowable ship directions
+extern int  nSHIP_DIRS;
 
 extern int   LANES;		// Number of possible Lanes to look at
 extern bool  RELATIVE;		// Normally RELATVIE will be true. (both elbow movements and rake rephasings are based on the last lane used)

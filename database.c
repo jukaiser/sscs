@@ -160,7 +160,7 @@ object *db_load_space_ships (void)
 
 {
   object *ret;
-  int i, n;
+  int i, n, j;
 
   if (mysql_query (con, SQL_COUNT_SPACESHIPS))
     finish_with_error (con);
@@ -220,6 +220,43 @@ object *db_load_space_ships (void)
       ret [i].dy = atoi (row [4]);
       ret [i].dt = atoi (row [5]);
       obj_mark_first (&ret [i]);
+      ret [i].wanted = false;
+      for (j = 0; j < nSHIP_DIRS; j++)
+	switch ((ship_dirs) SHIP_DIRS [j])
+	  {
+	    case dir_north:
+	      if (ret [i].dy < 0 && ret [i].dx == 0)
+		ret [i].wanted = true;
+	      break;
+	    case dir_northeast:
+	      if (ret [i].dy < 0 && ret [i].dx > 0)
+		ret [i].wanted = true;
+	      break;
+	    case dir_east:
+	      if (ret [i].dy == 0 && ret [i].dx > 0)
+		ret [i].wanted = true;
+	      break;
+	    case dir_southeast:
+	      if (ret [i].dy > 0 && ret [i].dx > 0)
+		ret [i].wanted = true;
+	      break;
+	    case dir_south:
+	      if (ret [i].dy > 0 && ret [i].dx == 0)
+		ret [i].wanted = true;
+	      break;
+	    case dir_southwest:
+	      if (ret [i].dy > 0 && ret [i].dx < 0)
+		ret [i].wanted = true;
+	      break;
+	    case dir_west:
+	      if (ret [i].dy == 0 && ret [i].dx < 0)
+		ret [i].wanted = true;
+	      break;
+	    case dir_north_west:
+	      if (ret [i].dy < 0 && ret [i].dx < 0)
+		ret [i].wanted = true;
+	      break;
+	  }
     }
 
   ret [n].id = 0;
@@ -259,7 +296,7 @@ bool db_is_reaction_finished (reaction *r)
   target *tgt = (target *) r->g_tgt->ptr;
   bool ret;
 
-  snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, r->id);
+  snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, tgt->id, r->bullet->id, r->lane);
 
   if (mysql_query (con, query))
     finish_with_error (con);
@@ -363,12 +400,15 @@ void db_reaction_finish (reaction *r, ROWID result_tId, int offX, int offY, int 
       case dbrt_stable:
 	t = "stable";
 	break;
+      case dbrt_pruned:
+	t = "pruned";
+	break;
       case dbrt_unfinished:
 	t = "unfinished";
 	break;
     }
 
-  snprintf (query, 4095, SQL_F_FINISH_REACTION, result_tId, offX, offY, gen, t, r->id);
+  snprintf (query, 4095, SQL_F_FINISH_REACTION, result_tId, offX, offY, gen, t, r->cost, r->id);
 
   if (mysql_query (con, query))
     finish_with_error (con);
