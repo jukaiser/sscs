@@ -28,7 +28,7 @@ void dump_qs ()
 
   assert (qs);
   printf ("\nQ-Dump [%d, %d]\n", current, max);
-return;
+
   for (i = current; i <= max; i++)
     {
       printf ("q [%d]: ", i);

@@ -66,6 +66,7 @@ main (int argc, char **argv)
       // The first nph generations of our lab [] contain the different phases of the current starting pattern.
       // extract them as targets.
       build_targets (0, nph);
+      reaction_targets_keep (nph);
 
       // build all possible reactions for these targets, queue them for later analysis and check them against our db.
       // NOTE: since we are handling starting patterns here, we don't have a "last lane used", yet.
@@ -83,8 +84,16 @@ main (int argc, char **argv)
     {
 if (o_cost < r->cost) queue_info (); o_cost = r->cost;
       handle (r);
+      free (r);
 // getchar ();
 // puts ("\033[H\033[2J");
     }
+
+  free (b->name);
+  pat_deallocate (b->p);
+  free (b->p);
+  free (b);
+
+  printf ("All reactions upto a cost of %d handled!\n", MAXCOST);
 }
 

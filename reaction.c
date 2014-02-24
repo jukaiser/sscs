@@ -29,6 +29,33 @@ int cost_for (int old_lane, int new_lane)
 }
 
 
+void reaction_targets_keep (int nph)
+
+{
+  int i;
+
+  // sync all we know about tgts with the DB.
+  for (i = 0; i < nph; i++)
+    {
+      char *rle = pat_rle (tgts [i]->pat);
+      if (!db_target_lookup (tgts [i], rle))
+        db_target_store (tgts [i], rle);
+    }
+
+  if (nph > 1)
+    for (i = 0; i < nph; i++)
+      db_target_link (i ? tgts [i-1]->id : tgts [nph-1]->id, tgts [i]->id);
+}
+
+
+void free_target (target *t)
+
+{
+  pat_deallocate (t->pat);
+  free (t->pat);
+}
+
+
 void free_targets (void)
 
 {
@@ -66,8 +93,9 @@ void build_reactions (int nph, bullet *b, bool preload, int old_cost, int old_la
 	  r->rId = 0;
 	  if (preload)
 	    {
-	      r->cost = 0;	// we're preloading!
-	      r->delta = 0;	// we're preloading!
+	      // we're preloading!
+	      r->cost = 0;
+	      r->delta = 0;
 	    }
 	  else
 	    {
@@ -79,12 +107,9 @@ void build_reactions (int nph, bullet *b, bool preload, int old_cost, int old_la
 	  r->lane = j;
 
 	  // Check our current reaction against db ... we don't need to follow it thru if it already handled completely.
-	  if (db_is_reaction_finished (r))
-	    continue;
-
-if (r->cost <= old_cost) printf ("Huch? old_cost = %d, old_lane = %d, new_lane = %d {%d}\n", old_cost, old_lane, j, cost_for (old_lane, j));
-assert (r->cost > old_cost);
-	  queue_insert (r->cost, r);
+	  // Also: maybe the raaction is discarded for being too expansive ...
+	  if (db_is_reaction_finished (r) || !queue_insert (r->cost, r))
+	    free (r);
 	}
     }
 }
@@ -125,9 +150,6 @@ void build_targets (int start, int nph)
 
       tgts [i-start] = tgt;
     }
-
-  // sync them with our db.
-  db_targets_keep (tgts, nph);
 }
 
 
@@ -212,7 +234,7 @@ static void stabilizes (reaction *r, target *old, int i, int p)
     }
 
   // check with our db, retrieve the ROW-ids if the targets existed or store them if they are new.
-  db_targets_keep (tgts, p);
+  reaction_targets_keep (p);
 
   // remember our success in the db.
   target *new = tgts [0];
@@ -226,7 +248,7 @@ static void stabilizes (reaction *r, target *old, int i, int p)
 // printf ("[%d, %d] -> [%d, %d] => %d\n", old->bottom, old->left, new->bottom, new->left, a);
 //  build_reactions (p, r->bullet, r->cost, r->lane + a);
 
-  // don't let them linger around longer then needed!
+  // don't let them linger around any longer then they are needed!
   free_targets ();
 }
 
@@ -283,9 +305,9 @@ void handle (reaction *r)
 
 assert (r);
 assert (!r->rId);
-  // May be the the collision has been queued more then once.
-  // And may *we* are not handling the cheapest of those.
-  // Since we are queueing reactions in order of least costs we are able to check this.
+  // Maybe the collision has been queued more then once.
+  // And maybe *we* are not handling the cheapest of those.
+  // Since we are queueing reactions in order of least cost we are able to check this.
   if (!db_reaction_keep (r))
     return;
 
@@ -303,6 +325,7 @@ assert (!r->rId);
     if (!pat_generate (&lab [i-1], &lab [i]))
       {
 	dies_at (r, i);
+	free_target (&tgt);
 	return;
       }
     else if (pat_touches_border (&lab [i], 3))
@@ -321,6 +344,7 @@ assert (!r->rId);
 	  if (!pat_generate (&lab [flyGen], &lab [flyGen+1]))
 	    {
 	      dies_at (r, flyGen+1);
+	      free_target (&tgt);
 	      return;
 	    }
 
@@ -333,6 +357,7 @@ assert (!r->rId);
 	  if (W(&lab [flyGen]) <= 0)
 	    {
 	      fly_by (r, &tgt, i);
+	      free_target (&tgt);
 	      return;
 	    }
 	}
@@ -354,21 +379,28 @@ assert (flyGen > 0);
       if (!pat_generate (&lab [i-1], &lab [i]))
 	{
 	  dies_at (r, i);
+	  free_target (&tgt);
 	  return;
 	}
       else if (pat_touches_border (&lab [i], 2))
 	{
 	  i = search_ships (r, i);
-	  if (i < 0) return; // reaction was pruned.
+	  if (i < 0)
+	    {
+	      free_target (&tgt);
+	      return; // reaction was pruned.
+	    }
 
 	  if (!W(&lab [i]))
 	    {
 	      dies_at (r, i);
+	      free_target (&tgt);
 	      return;
 	    }
 	  else if (pat_touches_border (&lab [i], 2))
 	    {
 	      explodes_at (r, i);
+	      free_target (&tgt);
 	      return;
 	    }
 	}
@@ -382,13 +414,18 @@ assert (lab[i].top > 1);
 	    p = 1;
 
 	  stabilizes (r, &tgt, i-2, p);
+	  free_target (&tgt);
 	  return;
 	}
     }
 
   // Maybe we didn't recognize a P2 because there is an (almost) emitted ship in our pattern?
   i = search_ships (r, MAXGEN+2);
-  if (i < 0) return; // reaction was pruned.
+  if (i < 0)
+    {
+      free_target (&tgt);
+      return; // reaction was pruned.
+    }
   for (; i < MAXGEN; i++)
     pat_generate (&lab [i], &lab [i+1]);
   p = 1 + i - MAXGEN;
@@ -400,11 +437,13 @@ assert (lab[i].top > 1);
       if (!pat_generate (&lab [MAXGEN + p-1], &lab [MAXGEN + p]))
 	{
 	  dies_at (r, MAXGEN + p);
+	  free_target (&tgt);
 	  return;
 	}
       else if (pat_touches_border (&lab [MAXGEN + p], 2))
 	{
 	  explodes_at (r, MAXGEN + p);
+	  free_target (&tgt);
 	  return;
 	}
 
@@ -418,12 +457,14 @@ assert (lab[i].top > 1);
 	      break;
 
 	  stabilizes (r, &tgt, i, p);
+	  free_target (&tgt);
 	  return;
 	}
     }
 
   // Me didn't find nuffin'!
   unstable (r, MAXGEN);
+  free_target (&tgt);
 }
 
 

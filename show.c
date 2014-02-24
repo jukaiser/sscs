@@ -41,6 +41,8 @@ main (int argc, char **argv)
   // config_load (argv [1]);
   lab_allocate (MAXWIDTH, MAXHEIGHT, MAXGEN, MAX_FIND);
 
+  printf ("dbg: %lu, %lu, %lu\n", sizeof (target), sizeof (reaction), sizeof (void *));
+
   for (i = 1; i < argc; i++)
     {
       snprintf (query, 4095, "SELECT initial_tId, bId, lane FROM reaction WHERE rId = %s", argv [i]);

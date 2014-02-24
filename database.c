@@ -48,7 +48,7 @@ void db_init (void)
 }
 
 
-static bool db_target_lookup (target *tgt, const char *rle)
+bool db_target_lookup (target *tgt, const char *rle)
 
 {
   char query [4096];
@@ -75,7 +75,7 @@ static bool db_target_lookup (target *tgt, const char *rle)
 }
 
 
-static void db_target_store (target *tgt, const char *rle)
+void db_target_store (target *tgt, const char *rle)
 
 {
   char query [4096];
@@ -88,7 +88,7 @@ static void db_target_store (target *tgt, const char *rle)
 }
 
 
-static void db_target_link (ROWID curr, ROWID nxt)
+void db_target_link (ROWID curr, ROWID nxt)
 
 {
   char query [4096];
@@ -265,25 +265,6 @@ object *db_load_space_ships (void)
   mysql_free_result (result);
 
   return ret;
-}
-
-
-void db_targets_keep (target **tgts, int nph)
-
-{
-  int i;
-
-  // sync all we know about tgts with the DB.
-  for (i = 0; i < nph; i++)
-    {
-      char *rle = pat_rle (tgts [i]->pat);
-      if (!db_target_lookup (tgts [i], rle))
-	db_target_store (tgts [i], rle);
-    }
-
-  if (nph > 1)
-    for (i = 0; i < nph; i++)
-      db_target_link (i ? tgts [i-1]->id : tgts [nph-1]->id, tgts [i]->id);
 }
 
 
