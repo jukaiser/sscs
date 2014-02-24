@@ -1,0 +1,36 @@
+Short installation instructions.
+
+Extract/copy to fresh directory.
+
+Check Schema/tables.sql:
+Schema is designed for mysql / maria db. The "ENGINE=MyISAM" is the fastest db engine on *my* computers.
+Maybe you have a faster one at your disposal?
+The larger tables have a "DATA DIRECTORY" and "INDEX DIRECTORY" clause in their definition.
+Either leave those out, or adapt it to your system.
+These specifications allow to choose a place for your database files which has "enough" space for running
+larger searches.
+
+If you want to use another database system alltogether:
+	- most database related code is in database.c
+	- Query strings are reconfigurable, check config.c
+	- Take great care with ROWID values. I should probably isolate them more ...
+
+For compilation you need the database C-binding installed (i.e.: mysql-devel or something).
+The rest of the sources is plain C.
+Check C_FLAGS and LIBS in the Makefile an then run make.
+
+Setting up database:
+	- create a database (I used the name gol, you can choose any name you like).
+	- GRANT ALL to some user you will be using for running the program with.
+	- Use Schema/tables.sql to define the structure of the database.
+	- Use Schema/ships.sql to preload database with some basic objects (space ships)
+	  If you have gencols (or at least the obj-Directory) installed on you box you can recreate ships.sql
+	  with the supplied program mk_ships
+	- You'll probably want to disable binary logging too, as it might easily eat gigabytes, and - after all -
+	  you're not running a medical database here or something.
+
+Edit test/default.cfg (or make your on copy of it):
+	- Adapt DBHOST ... DBPASSWD to your needs. (NYI)
+	- If you like you could change the PATH Definition at the top.
+	  It tells the program where to look for other files (like the starting pattern file defined by START)
+	- Take a look at the other definitions there.
