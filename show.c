@@ -9,7 +9,6 @@
 
 #include "config.h"
 #include "pattern.h"
-#include "guarded_ptr.h"
 #include "reaction.h"
 #include "database.h"
 
