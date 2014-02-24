@@ -40,6 +40,7 @@ char *DBPASSWD    = "";
 char *SQL_F_BULLET =
 	"SELECT bId, b.oId, rle, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes "
 		"FROM bullets b LEFT JOIN objects USING (oId) WHERE b.name = '%s'";
+char *SQL_F_FETCH_TARGET = "SELECT rle, period, combined_width, combined_height, offX, offY FROM target WHERE tId = %llu";
 char *SQL_F_SEARCH_TARGET = "SELECT tId FROM target WHERE rle = '%s'";
 char *SQL_F_STORE_TARGET =
 	"INSERT INTO target (tId, rle, width, height, combined_width, combined_height, offX, offY, period, next_tId) "
@@ -95,6 +96,7 @@ static cfg_var config [] =
     {"DBUSER",		STRING,  &DBUSER},
     {"DBPASSWD",	STRING,  &DBPASSWD},
     {"SQL_F_BULLET",	STRING,	 &SQL_F_BULLET},
+    {"SQL_F_FETCH_TARGET", STRING, &SQL_F_FETCH_TARGET},
     {"SQL_F_SEARCH_TARGET", STRING, &SQL_F_SEARCH_TARGET},
     {"SQL_F_STORE_TARGET", STRING, &SQL_F_STORE_TARGET},
     {"SQL_F_LINK_TARGET", STRING, &SQL_F_LINK_TARGET},

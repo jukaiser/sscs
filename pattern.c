@@ -18,7 +18,7 @@ pattern *lab = NULL;
 found   *findings = NULL;
 int maxX, maxY, maxGen, maxFound, nFound;
 
-static pattern *temp = NULL, *temp2 = NULL;
+static pattern *temp = NULL;
 static char *rle = NULL;
 
 
@@ -124,7 +124,6 @@ void lab_allocate (int _maxX, int _maxY, int _maxGen, int _maxFind)
   assert (lab [0].sizeX > 0 && lab [0].sizeY > 0);
 
   temp = pat_allocate (NULL, maxX, maxY);
-  temp2 = pat_allocate (NULL, maxX, maxY);
 
   ALLOC(found,findings,maxFound);
 }
@@ -465,6 +464,8 @@ void pat_from_string (const char *str)
   char dCell, lCell, newLine, endPat;
   const char *cp = str;
 
+  assert (temp->sizeX == lab [0].sizeX);
+  assert (temp->sizeY == lab [0].sizeY);
   pat_init (temp);
   pat_fill (temp, DEAD);
 
@@ -548,7 +549,7 @@ void pat_from_string (const char *str)
 	    count = 1;
 	  if (x + count >= temp->sizeX-1)
 	    {
-	      fprintf (stderr, "Pattern too wide!\n");
+	      fprintf (stderr, "pat_from_string ('%s'): Pattern too wide (%d > %d)!\n", str, x + count, temp->sizeX-1);
 	      exit (2);
 	    }
 	  for (; count > 0; count--)
@@ -560,7 +561,7 @@ void pat_from_string (const char *str)
 	  y += count ? count : 1;
 	  if (y >= temp->sizeY-1)
 	    {
-	      fprintf (stderr, "Pattern too high!\n");
+	      fprintf (stderr, "pat_from_string ('%s'): Pattern too high!\n", str);
 	      exit (2);
 	    }
 	  x = 1;
@@ -847,14 +848,16 @@ int obj_back_trace (void)
   int i, g, max = 0;
   found *o;
 
+  pattern *temp, *temp2;
+
   for (i = 0; i < nFound; i++)
     {
       int dx, dy;
 
       o = &findings [i];
-      pat_compact (o->obj->pat, temp2);	// ouch my neck??
+      temp2 = pat_compact (o->obj->pat, NULL);	// ouch my neck??
       pat_shrink_bbox (temp2);
-      pat_compact (temp2, temp);	// ouch my neck??
+      temp = pat_compact (temp2, NULL);	// ouch my neck??
 
       // For easy removeal without knowing all phases of the found objects we assume that P4 will work ...
       // TO DO: re-implement this to correctly work with other periods!
@@ -888,6 +891,11 @@ int obj_back_trace (void)
 
       pat_remove (&lab [max], x, y, temp);
     }
+
+  pat_deallocate (temp2);
+  free (temp2);
+  pat_deallocate (temp);
+  free (temp);
 
   return max;
 }

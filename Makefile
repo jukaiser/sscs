@@ -7,8 +7,8 @@ LIBS = -L/usr/lib64 -lmysqlclient -lpthread -lz -lm -lssl -lcrypto -ldl
 
 all:	sscs mk_ships show_reaction
 
-sscs:	main.o pattern.o config.o database.o queue.o guarded_ptr.o reaction.o
-	$(CC) $(CFLAGS) $(LIBS) -o sscs main.o pattern.o config.o database.o queue.o guarded_ptr.o reaction.o
+sscs:	main.o pattern.o config.o database.o queue.o reaction.o
+	$(CC) $(CFLAGS) $(LIBS) -o sscs main.o pattern.o config.o database.o queue.o reaction.o
 
 show_reaction:	show.o pattern.o config.o database.o
 	$(CC) $(CFLAGS) $(LIBS) -o show_reaction show.o pattern.o config.o database.o

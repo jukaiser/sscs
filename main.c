@@ -7,7 +7,6 @@
 
 #include "config.h"
 #include "pattern.h"
-#include "guarded_ptr.h"
 #include "reaction.h"
 #include "database.h"
 #include "queue.h"
@@ -71,6 +70,9 @@ main (int argc, char **argv)
       // build all possible reactions for these targets, queue them for later analysis and check them against our db.
       // NOTE: since we are handling starting patterns here, we don't have a "last lane used", yet.
       build_reactions (nph, b, true, -1, -1);
+
+      // get rid of lingering targets ...
+      free_targets ();
     }
   fclose (f);
 
@@ -83,15 +85,6 @@ if (o_cost < r->cost) queue_info (); o_cost = r->cost;
       handle (r);
 // getchar ();
 // puts ("\033[H\033[2J");
-
-      if (!guard_unlink (r->g_tgt))
-	{
-	  pat_deallocate (((target*)r->g_tgt->ptr)->pat);
-	  free (((target *)r->g_tgt->ptr)->pat);
-	  free (r->g_tgt->ptr);
-	  guard_dealloc (r->g_tgt);
-	}
-      free (r);
     }
 }
 

@@ -8,6 +8,7 @@ object *db_load_space_ships (void);
 typedef enum {dbrt_undef, dbrt_dies, dbrt_flyby, dbrt_stable, dbrt_pruned, dbrt_unfinished} db_reaction_type;
 
 void db_targets_keep (target **tgts, int nph);
+void db_target_fetch (reaction *r, target *t);
 bool db_reaction_keep (reaction *r);
 bool db_is_reaction_finished (reaction *r);
 void db_reaction_finish (reaction *r, ROWID result_tId, int offX, int offY, int gen, db_reaction_type type);

@@ -9,7 +9,6 @@
 
 #include "config.h"
 #include "pattern.h"
-#include "guarded_ptr.h"
 #include "reaction.h"
 #include "database.h"
 
@@ -293,10 +292,9 @@ bool db_is_reaction_finished (reaction *r)
 
 {
   char query [4096];
-  target *tgt = (target *) r->g_tgt->ptr;
   bool ret;
 
-  snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, tgt->id, r->bullet->id, r->lane);
+  snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, r->tId, r->bullet->id, r->lane);
 
   if (mysql_query (con, query))
     finish_with_error (con);
@@ -326,10 +324,9 @@ bool db_reaction_keep (reaction *r)
 
 {
   char query [4096];
-  target *tgt = (target *) r->g_tgt->ptr;
   bool ret;
 
-  snprintf (query, 4095, SQL_F_FETCH_REACTION, tgt->id, r->bullet->id, r->lane);
+  snprintf (query, 4095, SQL_F_FETCH_REACTION, r->tId, r->bullet->id, r->lane);
 
   if (mysql_query (con, query))
     finish_with_error (con);
@@ -344,22 +341,22 @@ bool db_reaction_keep (reaction *r)
 
   if (row)
     {
-      r->id = strtoull (row [0], NULL, 0);
+      r->rId = strtoull (row [0], NULL, 0);
       ret = (!row [1] || !row [1][0]);
     }
   else
-    r->id = 0;
+    r->rId = 0;
   mysql_free_result (result);
 
-  if (r->id)
+  if (r->rId)
     return ret;
 
-  snprintf (query, 4095, SQL_F_STORE_REACTION, tgt->id, r->bullet->id, r->lane);
+  snprintf (query, 4095, SQL_F_STORE_REACTION, r->tId, r->bullet->id, r->lane);
 
   if (mysql_query (con, query))
     finish_with_error (con);
 
-  r->id = mysql_insert_id(con);
+  r->rId = mysql_insert_id(con);
   return true;	// new reaction means: definetly not handled!
 }
 
@@ -408,9 +405,51 @@ void db_reaction_finish (reaction *r, ROWID result_tId, int offX, int offY, int 
 	break;
     }
 
-  snprintf (query, 4095, SQL_F_FINISH_REACTION, result_tId, offX, offY, gen, t, r->cost, r->id);
+  snprintf (query, 4095, SQL_F_FINISH_REACTION, result_tId, offX, offY, gen, t, r->cost, r->rId);
 
   if (mysql_query (con, query))
     finish_with_error (con);
 }
 
+
+void db_target_fetch (reaction *r, target *t)
+
+{
+  char query [4096];
+  int width, height, offX, offY;
+
+  assert (r);
+  snprintf (query, 4095, SQL_F_FETCH_TARGET, r->tId);
+
+  if (mysql_query (con, query))
+    finish_with_error (con);
+
+  MYSQL_RES *result = mysql_store_result (con);
+  if (!result)
+    {
+      fprintf (stderr, "Database error: target not found. Query = '%s'\n", query);
+      exit (2);
+    }
+
+  MYSQL_ROW row = mysql_fetch_row (result);
+  if (!row)
+    {
+      fprintf (stderr, "Database error: target not found. Query = '%s'\n", query);
+      exit (2);
+    }
+
+  pat_from_string (row [0]);
+  t->pat = pat_compact (&lab [0], NULL);
+  t->nph = atoi (row [1]);
+  width = atoi (row [2]);
+  height = atoi (row [3]);
+  offX = atoi (row [4]);
+  offY = atoi (row [5]);
+  mysql_free_result (result);
+  t->X = lab [0].left;
+  t->Y = lab [0].top;
+  t->top = t->Y - offY;
+  t->bottom = t->top + height - 1;
+  t->left = t->X - offX;
+  t->right = t->left + width - 1;
+}

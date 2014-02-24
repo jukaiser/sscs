@@ -53,6 +53,7 @@ extern char *DBPASSWD;
    They are used for storing and retreiving data to and from the table - and for checking if an object is already stored there.
 */
 extern char *SQL_F_BULLET;
+extern char *SQL_F_FETCH_TARGET;
 extern char *SQL_F_SEARCH_TARGET;
 extern char *SQL_F_STORE_TARGET;
 extern char *SQL_F_LINK_TARGET;
