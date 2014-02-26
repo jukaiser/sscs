@@ -2,16 +2,17 @@
 
 typedef struct
    {
-     ROWID   rId;
-     ROWID   tId;
-     bullet *bullet;
-     int     lane;
-     int     cost, delta;
+     ROWID    rId;
+     ROWID    tId;
+     uint8_t  b;
+     unsigned cost;
+     uint8_t  delta;
+     uint8_t  lane;
    } reaction;
 
 
 // better naming plx
-void build_reactions (int nph, bullet *b, bool preload, int old_cost, int old_lane);
+void build_reactions (int nph, int b, bool preload, unsigned old_cost, int old_lane);
 void build_targets (int start, int nph);
 void reaction_targets_keep (int nph);
 void free_targets (void);

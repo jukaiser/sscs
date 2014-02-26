@@ -100,16 +100,9 @@ void db_target_link (ROWID curr, ROWID nxt)
 }
 
 
-bullet *db_bullet_load (const char *name)
+void db_bullet_load (const char *name, bullet *b)
 
 {
-  bullet *b = malloc (sizeof (bullet));
-  if (!b)
-    {
-      perror ("db_bullet_load - malloc");
-      exit (2);
-    }
-
   char query [4096];
   snprintf (query, 4095, SQL_F_BULLET, name);
 
@@ -120,8 +113,8 @@ bullet *db_bullet_load (const char *name)
 
   if (!result)
     {
-      free (b);
-      return NULL;
+      fprintf (stderr, "db error: no bullet foun. query='%s'\n", query);
+      exit (2);
     }
 
   MYSQL_ROW row = mysql_fetch_row (result);
@@ -150,8 +143,6 @@ bullet *db_bullet_load (const char *name)
   b->extra_lanes = atoi (row [13]);
 
   mysql_free_result (result);
-
-  return b;
 }
 
 
@@ -276,7 +267,7 @@ bool db_is_reaction_finished (reaction *r)
   char query [4096];
   bool ret;
 
-  snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, r->tId, r->bullet->id, r->lane);
+  snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, r->tId, bullets [r->b].id, r->lane);
 
   if (mysql_query (con, query))
     finish_with_error (con);
@@ -308,7 +299,7 @@ bool db_reaction_keep (reaction *r)
   char query [4096];
   bool ret;
 
-  snprintf (query, 4095, SQL_F_FETCH_REACTION, r->tId, r->bullet->id, r->lane);
+  snprintf (query, 4095, SQL_F_FETCH_REACTION, r->tId, bullets [r->b].id, r->lane);
 
   if (mysql_query (con, query))
     finish_with_error (con);
@@ -333,7 +324,7 @@ bool db_reaction_keep (reaction *r)
   if (r->rId)
     return ret;
 
-  snprintf (query, 4095, SQL_F_STORE_REACTION, r->tId, r->bullet->id, r->lane);
+  snprintf (query, 4095, SQL_F_STORE_REACTION, r->tId, bullets [r->b].id, r->lane);
 
   if (mysql_query (con, query))
     finish_with_error (con);

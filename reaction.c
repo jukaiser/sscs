@@ -75,7 +75,7 @@ void free_targets (void)
 }
 
 
-void build_reactions (int nph, bullet *b, bool preload, int old_cost, int old_lane)
+void build_reactions (int nph, int b, bool preload, unsigned old_cost, int old_lane)
 
 {
   int i, j;
@@ -96,15 +96,17 @@ void build_reactions (int nph, bullet *b, bool preload, int old_cost, int old_la
 	    {
 	      // we're preloading!
 	      r->cost = 0;
-	      r->delta = 0;
+	      r->delta = INT8_C (0);
 	    }
 	  else
 	    {
-	      r->delta = cost_for (old_lane, j);
-	      r->cost = old_cost + r->delta;
+	      int d = cost_for (old_lane, j);
+	      assert (d > 0 && d < UINT8_MAX);
+	      r->delta = (uint8_t) d;
+	      r->cost =  (unsigned) old_cost + (unsigned) r->delta;
 	    }
 	  r->tId = tgts [i]->id;
-	  r->bullet = b;
+	  r->b = b;
 	  r->lane = j;
 
 	  // Check our current reaction against db ... we don't need to follow it thru if it already handled completely.
@@ -181,8 +183,9 @@ static void fly_by (reaction *r, target *tgt, int i)
 {
   db_reaction_finish (r, (ROWID)0, 0, 0, i, dbrt_flyby);
 
-  if (SHIPMODE == 1 && r->lane + LANES < tgt_count_lanes (tgt, r->bullet))
+  if (SHIPMODE == 1 && r->lane + LANES < tgt_count_lanes (tgt, r->b))
     {
+      assert (r->lane + LANES <= UINT8_MAX);
       reaction *new = malloc (sizeof (reaction));
       if (!new)
 	{
@@ -193,7 +196,7 @@ static void fly_by (reaction *r, target *tgt, int i)
 
       new->rId = 0;
       new->tId = r->tId;
-      new->bullet = r->bullet;
+      new->b = r->b;
       new->lane = r->lane + LANES;
       new->cost = r->cost;
       new->delta = r->delta;
@@ -201,10 +204,10 @@ static void fly_by (reaction *r, target *tgt, int i)
       if (db_is_reaction_finished (new))
 	return;
 
-      // printf ("Requeing as (%d, %llu, %s, %d)\n",  new->cost, new->tId, new->bullet->name, new->lane);
+      // printf ("Requeing as (%d, %llu, %s, %u)\n",  new->cost, new->tId, bullets [new->b].name, new->lane);
       if (!queue_insert (new->cost, new))
 	{
-	  fprintf (stderr, "Q-insert failed (cost = %d)!\n", new->cost);
+	  fprintf (stderr, "Q-insert failed (cost = %u)!\n", new->cost);
 	  exit (1);
 	}
     }
@@ -244,10 +247,10 @@ static void stabilizes (reaction *r, target *old, int i, int p)
   // build all possible reactions for these targets, queue them for later analysis and check them against our db.
   // NOTE: since we are handling starting patterns here, we don't have a "last lane used", yet.
 // printf ("TO DO: build_reactions (nph, -1);\n");
-  build_reactions (p, r->bullet, false, r->cost, r->lane + tgt_adjust_lane (r->bullet, old, new));
-// a = tgt_adjust_lane (r->bullet, old, new);
+  build_reactions (p, r->b, false, r->cost, r->lane + tgt_adjust_lane (r->b, old, new));
+// a = tgt_adjust_lane (r->b, old, new);
 // printf ("[%d, %d] -> [%d, %d] => %d\n", old->bottom, old->left, new->bottom, new->left, a);
-//  build_reactions (p, r->bullet, r->cost, r->lane + a);
+//  build_reactions (p, r->b, r->cost, r->lane + a);
 
   // don't let them linger around any longer then they are needed!
   free_targets ();
@@ -317,7 +320,7 @@ assert (!r->rId);
 
   // Build collision defined by our reaction -> lab [0]
   lab_init ();
-  tgt_collide (&tgt, r->bullet, r->lane, &flyX, &flyY, &flyGen);
+  tgt_collide (&tgt, &bullets [r->b], r->lane, &flyX, &flyY, &flyGen);
 
   // Fly-by detection ... generate until bullet would by definetly beyound target.
   // TO DO: rethink this whole fly-by mess! Maybe we should just integrate this in the main generation loop
@@ -332,10 +335,10 @@ assert (!r->rId);
     else if (pat_touches_border (&lab [i], 3))
       break;
 
-  if (i == flyGen+1 && pat_match (&lab [flyGen], flyX, flyY, r->bullet->p))
+  if (i == flyGen+1 && pat_match (&lab [flyGen], flyX, flyY, bullets [r->b].p))
     {
       int keep = flyGen-1;
-      pat_remove (&lab [flyGen], flyX, flyY, r->bullet->p);
+      pat_remove (&lab [flyGen], flyX, flyY, bullets [r->b].p);
 //       printf ("maybe fly-by (%d):\n", flyGen);
 // if (W(&lab [flyGen]) <= 0) { printf ("WOOT?\n"); for (i = 0; i < flyGen; i++) pat_dump (&lab [i], true); exit (0); }
 
@@ -366,7 +369,7 @@ assert (!r->rId);
       // OK. The bullet escapes. But the target did not survive unharmed. Note the escaping ship and continue!
       // TO DO: that's not QUITE correct!
 printf ("EMITTING BULLET!!\n");
-      emit (r, keep, flyX, flyY, r->bullet->oId);
+      emit (r, keep, flyX, flyY, bullets [r->b].oId);
     }
   flyGen = i-1;
 
@@ -472,6 +475,9 @@ assert (lab[i].top > 1);
 void init_reactions (void)
 
 {
+  // if this fails we need to redefine struct reaction in reaction.h
+  assert (LANES <= UINT8_MAX);
+
   tgts = calloc (MAXPERIOD, sizeof (target *));
           
   // load all standard ships so we can search for them ;)

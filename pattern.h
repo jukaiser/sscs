@@ -58,6 +58,7 @@ typedef struct
   } found;
 
 extern pattern *lab;
+extern bullet bullets [1];
 
 pattern *pat_allocate (pattern *p, int sx, int sy);
 void pat_init (pattern *p);
@@ -86,8 +87,8 @@ void lab_init (void);
 
 void tgt_center (target *tgt);
 void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int *fly_y, int *fly_dt);
-int  tgt_count_lanes (const target *const tgt, bullet *b);
-int  tgt_adjust_lane (bullet *b, target *old, target *new);
+int  tgt_count_lanes (const target *const tgt, int _b);
+int  tgt_adjust_lane (int _b, target *old, target *new);
 
 #define W(p)    ((p)->right-(p)->left+1)
 #define H(p)    ((p)->bottom-(p)->top+1)

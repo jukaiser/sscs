@@ -46,11 +46,11 @@ char *SQL_F_STORE_TARGET =
 	"INSERT INTO target (tId, rle, width, height, combined_width, combined_height, offX, offY, period, next_tId) "
 		"VALUES (NULL, '%s', %d, %d, %d, %d, %d, %d, %d, NULL)";
 char *SQL_F_LINK_TARGET = "UPDATE target SET next_tId = %llu WHERE tId = %llu";
-char *SQL_F_FETCH_REACTION = "SELECT rId, result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %d";
-char *SQL_F_IS_FINISHED_REACTION = "SELECT result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %d";
-char *SQL_F_STORE_REACTION = "INSERT INTO reaction (rId, initial_tId, bId, lane) VALUES (NULL, %llu, %llu, %d)";
+char *SQL_F_FETCH_REACTION = "SELECT rId, result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %u";
+char *SQL_F_IS_FINISHED_REACTION = "SELECT result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %u";
+char *SQL_F_STORE_REACTION = "INSERT INTO reaction (rId, initial_tId, bId, lane) VALUES (NULL, %llu, %llu, %u)";
 char *SQL_F_REACTION_EMITS = "UPDATE reaction SET emits_ships = 'true' WHERE rId = %llu";
-char *SQL_F_FINISH_REACTION = "UPDATE reaction SET result_tId = %llu, offX = %d, offY = %d, gen = %d, result = '%s', cost = %d WHERE rId = %llu";
+char *SQL_F_FINISH_REACTION = "UPDATE reaction SET result_tId = %llu, offX = %d, offY = %d, gen = %d, result = '%s', cost = %u WHERE rId = %llu";
 char *SQL_F_STORE_EMIT = "INSERT INTO emitted (eId, rId, oId, offX, offY, gen) VALUES (NULL, %llu, %llu, %d, %d, %d)";
 char *SQL_COUNT_SPACESHIPS = "SELECT COUNT(*) FROM objects WHERE dx <> 0 OR dy <> 0";
 char *SQL_SPACESHIPS = "SELECT oId, rle, name, dx, dy, dt FROM objects WHERE dx <> 0 OR dy <> 0";

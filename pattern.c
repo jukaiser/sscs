@@ -16,6 +16,7 @@
 
 
 pattern *lab = NULL;
+bullet bullets [1];
 found   *findings = NULL;
 int maxX, maxY, maxGen, maxFound, nFound;
 
@@ -1202,9 +1203,12 @@ void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int 
 }
 
 
-int tgt_count_lanes (const target *const tgt, bullet *b)
+int tgt_count_lanes (const target *const tgt, int _b)
 
 {
+  bullet *b = &bullets [_b];
+  assert (_b == 0);
+  assert (b);
   assert (tgt && tgt->pat);
 
   return W(tgt->pat)*b->lanes_per_width + H(tgt->pat)*b->lanes_per_height + b->extra_lanes;
@@ -1218,11 +1222,15 @@ bool pat_touches_border (pattern *p, int dist)
 }
 
 
-int tgt_adjust_lane (bullet *b, target *old, target *new)
+int tgt_adjust_lane (int _b, target *old, target *new)
 // Determine how much the current lane has ot be adjusted to reflect the changed bounding box from old -> new.
 // (The target will be recentered for the next collision)
 
 {
+  bullet *b = &bullets [_b];
+  assert (_b == 0);
+  assert (b);
+
   switch (b->reference)
     {
       case topleft:

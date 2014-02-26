@@ -18,8 +18,9 @@ main (int argc, char **argv)
 {
   int nph;
   FILE *f;
-  bullet *b;
   reaction *r;
+
+  printf ("DEBUG: sizeof(reaction) = %u\n", sizeof (reaction));
 
   if (argc != 2)
     {
@@ -39,7 +40,7 @@ main (int argc, char **argv)
     }
 
   // load our bullet (lanes to use are defined with the bullet)
-  b = db_bullet_load (BULLET);
+  db_bullet_load (BULLET, &bullets [0]);
 
   // Initialize the reaction handling module
   init_reactions ();
@@ -71,7 +72,7 @@ main (int argc, char **argv)
 
       // build all possible reactions for these targets, queue them for later analysis and check them against our db.
       // NOTE: since we are handling starting patterns here, we don't have a "last lane used", yet.
-      build_reactions (nph, b, true, -1, -1);
+      build_reactions (nph, 0, true, -1, -1);
 
       // get rid of lingering targets ...
       free_targets ();
@@ -80,7 +81,7 @@ main (int argc, char **argv)
 
   // main loop: take chepest reaction off the q, handle it (maybe queueing new reactions for later handling) and check if we could release some memory consuming objects.
   // Rinse and repeat, until queue runs empty (extremly unlikely!) or we get kicked by our user.
-  int o_cost = 0;
+  unsigned o_cost = 0;
   while (r = (reaction *) queue_grabfront ())
     {
 if (o_cost < r->cost) queue_info (); o_cost = r->cost;
@@ -90,11 +91,10 @@ if (o_cost < r->cost) queue_info (); o_cost = r->cost;
 // puts ("\033[H\033[2J");
     }
 
-  free (b->name);
-  pat_deallocate (b->p);
-  free (b->p);
-  free (b);
+  free (bullets [0].name);
+  pat_deallocate (bullets [0].p);
+  free (bullets [0].p);
 
-  printf ("All reactions upto a cost of %d handled!\n", MAXCOST);
+  printf ("All reactions upto a cost of %d handled!\n", MAXCOST-1);
 }
 
