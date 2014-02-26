@@ -737,12 +737,13 @@ b2o$obo$2bo!
 }
 
 
-void pat_dump (pattern *p)
+void pat_dump (pattern *p, bool withHeader)
 
 {
   if (p)
     {
-      printf ("Pattern (sY=%d,sx=%d) [top=%d,bottom=%d,left=%d,right=%d]: %p {cx=%d,cy=%d}\n", p->sizeY, p->sizeX, p->top, p->bottom, p->left, p->right, p->cell, (p->left+p->right)/2, (p->top+p->bottom)/2);
+      if (withHeader)
+	printf ("Pattern (sY=%d,sx=%d) [top=%d,bottom=%d,left=%d,right=%d]: %p {cx=%d,cy=%d}\n", p->sizeY, p->sizeX, p->top, p->bottom, p->left, p->right, p->cell, (p->left+p->right)/2, (p->top+p->bottom)/2);
       if (p->cell)
 	{
 	  int x, y;
@@ -778,7 +779,7 @@ void obj_mark_first (object *o)
       return;
 
   // we're not supposed to end here ...
-  pat_dump (o->pat);
+  pat_dump (o->pat, true);
   assert (0);
 }
 
@@ -920,7 +921,7 @@ found *obj_search (int gen, object *objs, int *n)
 
       assert (pat->top == 0);
       assert (pat->left == 0);
-if (lab[gen].top <= 0 || lab[gen].left <= 0) {pat_dump (&lab[gen]); pat_dump (pat); pat_dump (&lab [0]); printf("gen=%d, prevtop=%d, prevleft=%d\n", gen, lab[gen-1].top, lab[gen-1].left);}
+if (lab[gen].top <= 0 || lab[gen].left <= 0) {pat_dump (&lab[gen], true); pat_dump (pat, true); pat_dump (&lab [0], true); printf("gen=%d, prevtop=%d, prevleft=%d\n", gen, lab[gen-1].top, lab[gen-1].left);}
       assert (lab[gen].top > 0);
       assert (lab[gen].left > 0);
 

@@ -62,6 +62,7 @@ extern pattern *lab;
 pattern *pat_allocate (pattern *p, int sx, int sy);
 void pat_init (pattern *p);
 void pat_fill (pattern *p, char value);
+void pat_dump (pattern *p, bool withHeader);
 void pat_deallocate (pattern *pat);
 void pat_envelope (pattern *pat);
 pattern *pat_compact (pattern *p1, pattern *p2);

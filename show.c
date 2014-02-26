@@ -41,8 +41,6 @@ main (int argc, char **argv)
   // config_load (argv [1]);
   lab_allocate (MAXWIDTH, MAXHEIGHT, MAXGEN, MAX_FIND);
 
-  printf ("dbg: %lu, %lu, %lu\n", sizeof (target), sizeof (reaction), sizeof (void *));
-
   for (i = 1; i < argc; i++)
     {
       snprintf (query, 4095, "SELECT initial_tId, bId, lane FROM reaction WHERE rId = %s", argv [i]);
@@ -123,7 +121,9 @@ main (int argc, char **argv)
       mysql_free_result (result);
 
       tgt_collide (&t, &b, lane, &dummy, &dummy, &dummy);
-      pat_dump (&lab [0]);
+      printf ("#P %d 0\n", i*200);
+      pat_dump (&lab [0], false);
+      printf ("\n");
     }
 }
 

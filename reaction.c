@@ -279,7 +279,7 @@ int search_ships (reaction *r, int gen)
     return gen;
 
 // printf ("%llu emitting %d ships before gen %d>>\n", r->rId, n, gen);
-// if (n > 1) pat_dump (&lab [gen]);
+// if (n > 1) pat_dump (&lab [gen], true);
 
   // We know that at the current generation all objects in f have been around.
   // Find the point in time where the last ship appeared and remove them all.
@@ -336,7 +336,7 @@ assert (!r->rId);
       int keep = flyGen-1;
       pat_remove (&lab [flyGen], flyX, flyY, r->bullet->p);
 //       printf ("maybe fly-by (%d):\n", flyGen);
-// if (W(&lab [flyGen]) <= 0) { printf ("WOOT?\n"); for (i = 0; i < flyGen; i++) pat_dump (&lab [i]); exit (0); }
+// if (W(&lab [flyGen]) <= 0) { printf ("WOOT?\n"); for (i = 0; i < flyGen; i++) pat_dump (&lab [i], true); exit (0); }
 
       // Synchronise reaction with the uncollided target
       while (flyGen % tgt.nph)
@@ -370,7 +370,7 @@ printf ("EMITTING BULLET!!\n");
   flyGen = i-1;
 
   // Here: no fly by. Follow the reaction until it stabilizes.
-if (flyGen == 0) pat_dump (&lab [0]); 
+if (flyGen == 0) pat_dump (&lab [0], true); 
 assert (flyGen > 0);
   for (i = flyGen+1; i <= MAXGEN+2; i++)
     {
