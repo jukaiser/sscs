@@ -78,8 +78,8 @@ void free_targets (void)
 void build_reactions (int nph, int b, bool preload, unsigned old_cost, int old_lane)
 
 {
-  int i, j;
-  reaction *r;
+  int i, j, cost;
+  uint8_t delta;
 
   for (i = 0; i < nph; i++)
     {
@@ -89,30 +89,23 @@ void build_reactions (int nph, int b, bool preload, unsigned old_cost, int old_l
 	n = LANES;
       for (j = 0; j < n; j++)
 	{
-	  r = malloc (sizeof (reaction));
-	  if (!r) { perror ("malloc"); exit (2); }
-	  r->rId = 0;
 	  if (preload)
 	    {
 	      // we're preloading!
-	      r->cost = 0;
-	      r->delta = INT8_C (0);
+	      cost = 0;
+	      delta = INT8_C (0);
 	    }
 	  else
 	    {
 	      int d = cost_for (old_lane, j);
 	      assert (d > 0 && d < UINT8_MAX);
-	      r->delta = (uint8_t) d;
-	      r->cost =  (unsigned) old_cost + (unsigned) r->delta;
+	      delta = (uint8_t) d;
+	      cost =  (unsigned) old_cost + (unsigned) delta;
 	    }
-	  r->tId = tgts [i]->id;
-	  r->b = b;
-	  r->lane = j;
 
 	  // Check our current reaction against db ... we don't need to follow it thru if it already handled completely.
-	  // Also: maybe the raaction is discarded for being too expansive ...
-	  if (db_is_reaction_finished (r) || !queue_insert (r->cost, r))
-	    free (r);
+	  if (!db_is_reaction_finished (tgts [i]->id, b, j))
+	    queue_insert (cost, tgts [i]->id, b, (uint8_t) j, delta);
 	}
     }
 }
@@ -186,28 +179,15 @@ static void fly_by (reaction *r, target *tgt, int i)
   if (SHIPMODE == 1 && r->lane + LANES < tgt_count_lanes (tgt, r->b))
     {
       assert (r->lane + LANES <= UINT8_MAX);
-      reaction *new = malloc (sizeof (reaction));
-      if (!new)
-	{
-	  perror ("reaction::fly_by - malloc");
-	  exit (1);
-	}
       r->rId = 0;
 
-      new->rId = 0;
-      new->tId = r->tId;
-      new->b = r->b;
-      new->lane = r->lane + LANES;
-      new->cost = r->cost;
-      new->delta = r->delta;
-
-      if (db_is_reaction_finished (new))
+      if (db_is_reaction_finished (r->tId, r->b, r->lane + LANES))
 	return;
 
       // printf ("Requeing as (%d, %llu, %s, %u)\n",  new->cost, new->tId, bullets [new->b].name, new->lane);
-      if (!queue_insert (new->cost, new))
+      if (!queue_insert (r->cost, r->tId, r->b, r->lane + LANES, r->delta))
 	{
-	  fprintf (stderr, "Q-insert failed (cost = %u)!\n", new->cost);
+	  fprintf (stderr, "Q-insert failed (cost = %u)!\n", r->cost);
 	  exit (1);
 	}
     }

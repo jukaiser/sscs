@@ -12,6 +12,6 @@ void db_target_link (ROWID curr, ROWID nxt);
 bool db_target_lookup (target *tgt, const char *rle);
 void db_target_fetch (reaction *r, target *t);
 bool db_reaction_keep (reaction *r);
-bool db_is_reaction_finished (reaction *r);
+bool db_is_reaction_finished (ROWID tId, unsigned b, unsigned lane);
 void db_reaction_finish (reaction *r, ROWID result_tId, int offX, int offY, int gen, db_reaction_type type);
 void db_store_emit (ROWID rId, ROWID oId, int offX, int offY, int gen);

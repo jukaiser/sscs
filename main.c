@@ -20,8 +20,6 @@ main (int argc, char **argv)
   FILE *f;
   reaction *r;
 
-  printf ("DEBUG: sizeof(reaction) = %u\n", sizeof (reaction));
-
   if (argc != 2)
     {
       fprintf (stderr, "Usage: %s <configfile>\n\nSearch for slow salvo constructions based on <configfile> given.\n", argv [0]);

@@ -260,14 +260,14 @@ object *db_load_space_ships (void)
 }
 
 
-bool db_is_reaction_finished (reaction *r)
+bool db_is_reaction_finished (ROWID tId, unsigned b, unsigned lane)
 // TO DO: we should take a closer look at "exploding" and "unfinished" reactions. Maybe the context has change since the last run ...
 
 {
   char query [4096];
   bool ret;
 
-  snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, r->tId, bullets [r->b].id, r->lane);
+  snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, tId, bullets [b].id, lane);
 
   if (mysql_query (con, query))
     finish_with_error (con);
@@ -284,6 +284,9 @@ bool db_is_reaction_finished (reaction *r)
     ret = (row [0] && row [0][0]);
   else
     ret = false;
+
+// if (ret) printf ("INFO: Skipping already handled reaction tId=%llu ./. (bullet=%u,lane=%u) [stored result was '%s']\n", tId, b, lane, row [0]);
+
   mysql_free_result (result);
 
   return ret;

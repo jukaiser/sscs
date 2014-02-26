@@ -7,12 +7,14 @@
 #include <assert.h>
 
 #include "config.h"
+#include "pattern.h"
+#include "reaction.h"
 #include "queue.h"
 
 
 typedef struct _entry
   {
-    void          *value;
+    reaction	  *value;
     struct _entry *next;
   } entry;
 
@@ -79,7 +81,8 @@ void queue_init (void)
 }
 
 
-bool queue_insert (int cost, void *val)
+bool queue_insert (int cost, ROWID tId, uint8_t  b, uint8_t  lane, uint8_t  delta)
+
 {
   assert (qs);
 
@@ -96,10 +99,17 @@ bool queue_insert (int cost, void *val)
 
   entry *e = (entry *) malloc (sizeof (entry));
   if (!e) {perror ("queue_insert - malloc"); exit (2);}
+  e->value = malloc (sizeof (reaction));
+  if (!e->value) {perror ("queue_insert - malloc"); exit (2);}
 
   // Insert new entry at front of q
   // Note: this results in a kind of "depth first" search. Salvos of several cheap bullets will be considered first.
-  e->value = val;
+  e->value->rId   = 0;
+  e->value->tId   = tId;
+  e->value->cost  = cost;
+  e->value->delta = delta;
+  e->value->b     = b;
+  e->value->lane  = lane;
   e->next = qs [cost];
   qs [cost] = e;
   count++;
@@ -108,7 +118,7 @@ bool queue_insert (int cost, void *val)
 }
 
 
-void *queue_grabfront (void)
+reaction *queue_grabfront (void)
 
 {
   assert (qs);
@@ -128,7 +138,7 @@ void *queue_grabfront (void)
 // dump_qs (); fflush (stdout);
 
   entry *e = qs [current];
-  void *v = e->value;
+  reaction *v = e->value;
   qs [current] = e->next;
   free (e);
   count--;

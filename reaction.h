@@ -4,9 +4,9 @@ typedef struct
    {
      ROWID    rId;
      ROWID    tId;
-     uint8_t  b;
      unsigned cost;
      uint8_t  delta;
+     uint8_t  b;
      uint8_t  lane;
    } reaction;
 
