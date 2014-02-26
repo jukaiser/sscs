@@ -30,7 +30,7 @@ Setting up database:
 	  you're not running a medical database here or something.
 
 Edit test/default.cfg (or make your on copy of it):
-	- Adapt DBHOST ... DBPASSWD to your needs. (NYI)
+	- Adapt DBHOST ... DBPASSWD to your needs.
 	- If you like you could change the PATH Definition at the top.
 	  It tells the program where to look for other files (like the starting pattern file defined by START)
 	- Take a look at the other definitions there.

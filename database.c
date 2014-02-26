@@ -43,7 +43,7 @@ void db_init (void)
       exit (2);
     }
 
-  if (mysql_real_connect (con, "localhost", "gol", "GoL", "gol", 0, NULL, 0) == NULL)
+  if (mysql_real_connect (con, DBHOST, DBUSER, DBPASSWD, DBNAME, DBPORT, NULL, 0) == NULL)
     finish_with_error (con);
 }
 
