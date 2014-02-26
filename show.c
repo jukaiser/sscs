@@ -5,6 +5,7 @@
 #include <mysql.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <assert.h>
 
 #include "config.h"
@@ -33,15 +34,16 @@ main (int argc, char **argv)
   MYSQL_RES *result;
   MYSQL_ROW row;
 
+  config_load (argv [1]);
+
   MYSQL *con = mysql_init(NULL);
-  if (mysql_real_connect (con, "localhost", "gol", "GoL", "gol", 0, NULL, 0) == NULL)
+  if (mysql_real_connect (con, DBHOST, DBUSER, DBPASSWD, DBNAME, DBPORT, NULL, 0) == NULL)
     finish_with_error (con);
 
   // Initialize all modules.
-  // config_load (argv [1]);
   lab_allocate (MAXWIDTH, MAXHEIGHT, MAXGEN, MAX_FIND);
 
-  for (i = 1; i < argc; i++)
+  for (i = 2; i < argc; i++)
     {
       snprintf (query, 4095, "SELECT initial_tId, bId, lane FROM reaction WHERE rId = %s", argv [i]);
       if (mysql_query (con, query))
@@ -121,7 +123,7 @@ main (int argc, char **argv)
       mysql_free_result (result);
 
       tgt_collide (&t, &b, lane, &dummy, &dummy, &dummy);
-      printf ("#P %d 0\n", i*200);
+      printf ("#P %d 0\n", (i-2)*200);
       pat_dump (&lab [0], false);
       printf ("\n");
     }

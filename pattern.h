@@ -4,7 +4,7 @@
 #define VISITED	':'
 
 // WARNING: you must fit this to the data type your DB uses for ROW IDs.
-typedef unsigned long long ROWID;
+typedef uint64_t ROWID;
 
 // pattern and stuff
 typedef struct
