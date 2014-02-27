@@ -172,6 +172,10 @@ static void emit (reaction *r, int gen, int offX, int offY, ROWID oId)
 
 
 static void fly_by (reaction *r, target *tgt, int i)
+// TO DO: the complete fly-by detection mess has to be reworked.
+//	+ currently we have to increase the cost by one to make queue_insert () happy.
+//	  we should rather alter *r and rerun handle () then re-queue
+//	+ Check for stabilization during fly-by detection.
 
 {
   db_reaction_finish (r, (ROWID)0, 0, 0, i, dbrt_flyby);
@@ -185,7 +189,7 @@ static void fly_by (reaction *r, target *tgt, int i)
 	return;
 
       // printf ("Requeing as (%d, %llu, %s, %u)\n",  new->cost, new->tId, bullets [new->b].name, new->lane);
-      if (!queue_insert (r->cost, r->tId, r->b, r->lane + LANES, r->delta))
+      if (!queue_insert (r->cost+1, r->tId, r->b, r->lane + LANES, r->delta))
 	{
 	  fprintf (stderr, "Q-insert failed (cost = %u)!\n", r->cost);
 	  exit (1);

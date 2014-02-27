@@ -12,39 +12,98 @@
 #include "queue.h"
 
 
-typedef struct _entry
-  {
-    reaction	  *value;
-    struct _entry *next;
-  } entry;
+// one file will be about one MB in size ...
+// Just for fun. Performance impact of chosing a non perfect size is not too severe
+#define CHUNK	43690
 
-static entry **qs = NULL;
+
+typedef struct
+  {
+    reaction r [CHUNK];
+    int	     cost;
+    int	     n_get;
+    int      n_put;
+    int	     n_retrieve;
+    int	     n_store;
+  } chunk;
+
+static chunk *chunks = NULL;
 static int current = 0;
 static int max = -1;
-static int count = 0;
 
 
-void dump_qs ()
+static void purge_to_disk (int cost)
 
 {
-  int i;
+  char fname [4096];
+  FILE *data;
+  chunk *cp;
+  int  to_save, slot;
 
-  assert (qs);
-  printf ("\nQ-Dump [%d, %d]\n", current, max);
+  slot = cost % (MAXDELTA+1);
+  cp = &chunks [slot];
+  assert (cost == cp->cost);
 
-  for (i = current; i <= max; i++)
+  to_save = cp->n_put - cp->n_get;
+  assert (to_save > 0 && to_save <= CHUNK);
+
+  snprintf (fname, 4095, F_TEMPFILES, slot, cost, cp->n_store++);
+  data = fopen (fname, "wb");
+
+  printf ("purge_to_disk (%d): saving %d entries to '%s'\n", cost, to_save, fname);
+  if (!data ||
+      fwrite (&cp->cost, sizeof (int), 1, data) != 1 ||
+      fwrite (&to_save, sizeof (int), 1, data) != 1 ||
+      fwrite (&cp->r [cp->n_get], sizeof (reaction), to_save, data) != to_save)
     {
-      printf ("q [%d]: ", i);
-      entry *e = qs [i];
-      if (!e)
-	printf (" is empty");
-      else while (e)
-	{
-	  printf ("%p->(%p,%p) ", e, e->value, e->next);
-	  e = e->next;
-	}
-      printf ("\n");
+      fprintf (stderr, "Error writing to '%s': ", fname);
+      perror ("purge_to_disk ()");
+      exit (2);
     }
+
+  fclose (data);
+
+  // chunk is unused now ...
+  cp->n_get = 0;
+  cp->n_put = 0;
+}
+
+
+static void read_from_disk (int cost)
+
+{
+  char fname [4096];
+  FILE *data;
+  chunk *cp;
+  int  to_load, slot;
+
+  slot = cost % (MAXDELTA+1);
+  cp = &chunks [slot];
+
+  assert (cp->n_get == cp->n_put);
+
+  snprintf (fname, 4095, F_TEMPFILES, slot, cost, cp->n_retrieve++);
+  data = fopen (fname, "rb");
+
+  if (!data ||
+      fread (&cp->cost, sizeof (int), 1, data) != 1 ||
+      cp->cost != cost ||
+      fread (&to_load, sizeof (int), 1, data) != 1 ||
+      to_load <= 0 || to_load > CHUNK ||
+      fread (cp->r, sizeof (reaction), to_load, data) != to_load)
+    {
+      fprintf (stderr, "Error reading from '%s': ", fname);
+      perror ("read_from_disk ()");
+      exit (2);
+    }
+
+  fclose (data);
+  printf ("read_from_disk (%d): read back %d entries from '%s'\n", cost, to_load, fname);
+  unlink (fname);
+
+  // We should have some data for our customer now
+  cp->n_get = 0;
+  cp->n_put = to_load;
 }
 
 
@@ -52,68 +111,72 @@ void queue_init (void)
 /* (Re)initialise our q */
 
 {
+  int slot;
+
   // Do we have some old qs left to discard?
-  if (qs)
-    {
-      int i;
-      for (i = 0; i <= max; i++)
-	{
-	  if (qs [i])
-	    {
-	      /* TO DO: do this properly!! */
-	      free (qs [i]);
-	      qs [i] = NULL;
-	    }
-	}
+  if (chunks)
+    free (chunks);
 
-      free (qs);
-    }
-
-  qs = calloc (sizeof (entry *), MAXCOST);
-  if (!qs)
+  chunks = calloc (sizeof (chunk), MAXDELTA+1);
+  if (!chunks)
     {
       perror ("queue_init () - calloc()");
       exit (2);
     }
   current = 0;
-  max = -1;
-  count = 0;
+
+  // Just to be safe.
+  for (slot = 0; slot <= MAXDELTA; slot++)
+    {
+      chunks [slot].n_get = 0;
+      chunks [slot].n_put = 0;
+      chunks [slot].n_retrieve = 0;
+      chunks [slot].n_store = 0;
+    }
 }
 
 
 bool queue_insert (int cost, ROWID tId, uint8_t  b, uint8_t  lane, uint8_t  delta)
 
 {
-  assert (qs);
+  chunk *cp;
+  reaction *r;
+  int slot;
 
-  // Sanity 4 all!
-  if (cost < current)
-    return false;
-  if (cost > max)
+  assert (chunks);
+  assert (cost == 0 || (cost > current && cost <= current + MAXDELTA));
+
+  if (cost > max) max = cost;
+
+  slot = cost % (MAXDELTA+1);
+  cp = &chunks [slot];
+
+  // If this is the first item in the current slot we have to do some bookkeeping.
+  if (cp->n_put == cp->n_get)
     {
-      // We don't have enough qs []!
-      if (cost >= MAXCOST)
-	return false;
-      max = cost;
+      cp->cost = cost;
+      cp->n_get = 0;
+      cp->n_put = 0;
+      cp->n_retrieve = 0;
+      cp->n_store = 0;
     }
 
-  entry *e = (entry *) malloc (sizeof (entry));
-  if (!e) {perror ("queue_insert - malloc"); exit (2);}
-  e->value = malloc (sizeof (reaction));
-  if (!e->value) {perror ("queue_insert - malloc"); exit (2);}
+  assert (cp->cost == cost);
 
-  // Insert new entry at front of q
-  // Note: this results in a kind of "depth first" search. Salvos of several cheap bullets will be considered first.
-  e->value->rId   = 0;
-  e->value->tId   = tId;
-  e->value->cost  = cost;
-  e->value->delta = delta;
-  e->value->b     = b;
-  e->value->lane  = lane;
-  e->next = qs [cost];
-  qs [cost] = e;
-  count++;
+  // do we have enough space left?
+  if (cp->n_put >= CHUNK)
+    purge_to_disk (cost);
 
+  // Insert new reaction at the end of the selected chunk
+  r = &cp->r [cp->n_put++];
+  r->rId   = 0;
+  r->tId   = tId;
+  r->cost  = cost;
+  r->delta = delta;
+  r->b     = b;
+  r->lane  = lane;
+
+  // TO DO: our current implementation either fails fatally or is successful. So returning true for success is not really indicated.
   return true;
 }
 
@@ -121,34 +184,57 @@ bool queue_insert (int cost, ROWID tId, uint8_t  b, uint8_t  lane, uint8_t  delt
 reaction *queue_grabfront (void)
 
 {
-  assert (qs);
+  chunk *cp;
+  int slot;
 
-// printf ("GRAB!\n"); fflush (stdout);
-// dump_qs (); fflush (stdout);
-  // find first non empty q
-  while (current <= max && !qs [current])
-     {
-     current++;
-// printf ("current = %d|%p\n", current, qs [current]); fflush (stdout);
-// dump_qs (); fflush (stdout);
-     }
+  assert (chunks);
 
-  // complete q empty?
-  if (current > max) return NULL;
-// dump_qs (); fflush (stdout);
+  while (current <= max)
+    {
+      slot = current % (MAXDELTA+1);
+      cp = &chunks [slot];
 
-  entry *e = qs [current];
-  reaction *v = e->value;
-  qs [current] = e->next;
-  free (e);
-  count--;
+      assert (cp->n_get >= 0);
+      assert (cp->cost == current);
 
-  return v;
+      // is there at least one entry left in the current chunk?
+      if (cp->n_get < cp->n_put)
+	break;
+
+      // Do we have a(nother) saved chunk on disk?
+      if (cp->n_retrieve < cp->n_store)
+	{
+	  read_from_disk (current);
+	  break;
+	}
+ 
+      // no more reactions of the current cost found.
+      current++;
+    }
+
+  // No more work left!
+  if (current > MAXCOST || current > max) return NULL;
+
+  // we have at least one item left!
+  assert (cp->n_get < cp->n_put);
+
+  return &cp->r [cp->n_get++];
 }
 
 
 void queue_info (void)
 
 {
-  printf ("Q-Info: current=%d, max=%d, count=%d mem?%lu\n", current, max, count, (unsigned long) (sbrk(0)-(void*)qs));
+  printf ("Q: current=%d, max=%d\n", current, max);
+}
+
+
+void queue_purge_all (void)
+
+{
+  int cost;
+
+  for (cost = current; cost <= max; cost++)
+    if (chunks [cost % (MAXDELTA+1)].n_get <chunks [cost % (MAXDELTA+1)].n_put)
+      purge_to_disk (cost);
 }

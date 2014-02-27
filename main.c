@@ -84,15 +84,15 @@ main (int argc, char **argv)
     {
 if (o_cost < r->cost) queue_info (); o_cost = r->cost;
       handle (r);
-      free (r);
-// getchar ();
-// puts ("\033[H\033[2J");
     }
 
   free (bullets [0].name);
   pat_deallocate (bullets [0].p);
   free (bullets [0].p);
 
-  printf ("All reactions upto a cost of %d handled!\n", MAXCOST-1);
+  printf ("All reactions upto a cost of %d handled!\n", MAXCOST);
+
+  // Keep all unhandled () reactions for later.
+  queue_purge_all ();
 }
 

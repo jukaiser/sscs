@@ -9,6 +9,7 @@
 
 // -> config.h!
 char *PATH	  = "test";
+char *F_TEMPFILES = "tmp/%02u/chunk-%04u-%09u.raw";
 int   MAXCOST	  = 8192;
 int   MAXWIDTH	  = 128;
 int   MAXHEIGHT	  = 64;
@@ -31,6 +32,7 @@ int   LANES	  = 31;
 bool  RELATIVE    = true;
 int  *COSTS	  = NULL;
 int  nCOSTS	  = 0;
+int   MAXDELTA	  = 31;
 char *DBHOST	  = "localhost";
 int   DBPORT	  = 3306;
 char *DBNAME	  = "gol";
@@ -70,6 +72,7 @@ typedef struct
 static cfg_var config [] =
   {
     {"PATH",		STRING,  &PATH},
+    {"F_TEMPFILES",	STRING,  &F_TEMPFILES},
     {"MAXCOST",		NUM,     &MAXCOST},
     {"MAXWIDTH",	NUM,     &MAXWIDTH},
     {"MAXHEIGHT",	NUM,     &MAXHEIGHT},
@@ -90,6 +93,7 @@ static cfg_var config [] =
     {"LANES",		NUM,     &LANES},
     {"RELATIVE",	BOOL,    &RELATIVE},
     {"COSTS",		N_ARRAY, &COSTS, &nCOSTS},
+    {"MAXDELTA",	NUM,     &MAXDELTA},
     {"DBHOST",		STRING,  &DBHOST},
     {"DBPORT",		NUM,     &DBPORT},
     {"DBNAME",		STRING,  &DBNAME},

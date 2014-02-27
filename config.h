@@ -6,6 +6,7 @@
 typedef enum {dir_north, dir_northeast, dir_east, dir_southeast, dir_south, dir_southwest, dir_west, dir_north_west} ship_dirs;
 
 extern char *PATH;		// Where to look for files
+extern char *F_TEMPFILES;	// Format for temporary file names
 
 extern int   MAXCOST;		// Maximum cost of reaction chains we will look at.
 
@@ -40,6 +41,7 @@ extern int   LANES;		// Number of possible Lanes to look at
 extern bool  RELATIVE;		// Normally RELATVIE will be true. (both elbow movements and rake rephasings are based on the last lane used)
 extern int  *COSTS;		// Cost of using a certain lane. If relative == true, COSTS [i] means cost for lane(n+1) ::= lane(n) + i
 extern int  nCOSTS;		// # of elements in COSTS []
+extern int  MAXDELTA;		// maximum value in COSTS
 
 /* Database interace */
 extern char *DBHOST;		// the usual connection parameters for a mysql db. DBUSER must exist and have the GRANTs needed by us.
