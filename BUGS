@@ -1,0 +1,10 @@
+Fly-by detection:
+	+ rework: do not requeue, rather restart handle ()
+	+ Check for stabilization during fly-by detection.
+
+Object (ship) detection:
+	+ currently the detected object is back tracked to the first gen where it appeared.
+	  It is then remove in this generation and pattern generation restarted at this gen.
+	  (Because the detected ship would interfer with the check for a stabilized pattern).
+	  As a result, heisenburps could lead to errors.
+	  => remove the ship from EVERY generation - should be cheaper, anyway.
