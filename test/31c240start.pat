@@ -40,11 +40,8 @@ x = 4, y = 4, rule = B3/S23
 x = 7, y = 7, rule = B3/S23
 2b3o2$o5bo$o5bo$o5bo2$2b3o!
 
-x = 12, y = 6, rule = B3/S23
-10b2o$10b2o2$3o$9b2o$9b2o!
-
-x = 3, y = 6, rule = B3/S23
-b2o$b2o3$2o$2o!
+x = 23, y = 10, rule = B3/S23
+21b2o$21b2o3$b2o17b2o$b2o17b2o3$2o$2o!
 
 x = 1, y = 3, rule = B3/S23
 o$o$o!
