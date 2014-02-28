@@ -43,6 +43,11 @@ main (int argc, char **argv)
 
   // Initialize all modules. (Starting with config, since config_load () might override variables used by other initialisations
   config_load (cfg_file);
+  if (chdir (PATH) != 0)
+    {
+      perror (PATH);
+      exit (2);
+    }
   db_init ();
   queue_init ();
   lab_allocate (MAXWIDTH, MAXHEIGHT, MAXGEN+1+MAXPERIOD, MAX_FIND);
@@ -67,7 +72,6 @@ main (int argc, char **argv)
   else
     {
       // Preload all combinations of a candidate starting pattern and a bullet on any significant lane into our q.
-      if (chdir (PATH) != 0) {perror (PATH); exit (2);}
       f = fopen (START, "r"); if (!f) {perror (START); exit (2);}
       while (!feof (f))
 	{
