@@ -33,7 +33,7 @@ CREATE TABLE chain (
   KEY (parent_tId),
   KEY (parent_cId),
   KEY (cost)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol2' INDEX DIRECTORY = '/home/mysql-gol2';
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol' INDEX DIRECTORY = '/home/mysql-gol';
 
 DROP TABLE IF EXISTS emitted;
 CREATE TABLE emitted (
@@ -45,7 +45,7 @@ CREATE TABLE emitted (
   gen int(11) NOT NULL,
   KEY (rId),
   KEY (oId)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol2' INDEX DIRECTORY = '/home/mysql-gol2';
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol' INDEX DIRECTORY = '/home/mysql-gol';
 
 DROP TABLE IF EXISTS reaction;
 CREATE TABLE reaction (
@@ -66,7 +66,7 @@ CREATE TABLE reaction (
   KEY (initial_tId),
   KEY (result_tId)
   -- FULLTEXT INDEX (summary)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol2' INDEX DIRECTORY = '/home/mysql-gol2';
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol' INDEX DIRECTORY = '/home/mysql-gol';
 
 DROP TABLE IF EXISTS target;
 CREATE TABLE target (
@@ -85,7 +85,7 @@ CREATE TABLE target (
   UNIQUE KEY (rle)
 --  KEY (next_tId)
 --  KEY (comment)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol2' INDEX DIRECTORY = '/home/mysql-gol2';
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol' INDEX DIRECTORY = '/home/mysql-gol';
 
 DROP TABLE IF EXISTS objects;
 CREATE TABLE objects (

@@ -15,3 +15,4 @@ Config loader:
 Features missing:
 	+ implement continuing an interrupted search by using the saved files provided by the previous run.
 	+ support for more then one rake type per project.
+	+ classification of patterns and reactions in a comment field in the db rows.

@@ -229,12 +229,52 @@ void queue_info (void)
 }
 
 
-void queue_purge_all (void)
+void queue_save_state (const char *fname)
 
 {
-  int cost;
+  FILE *data = fopen (fname, "wb");
 
-  for (cost = current; cost <= max; cost++)
-    if (chunks [cost % (MAXDELTA+1)].n_get <chunks [cost % (MAXDELTA+1)].n_put)
-      purge_to_disk (cost);
+  if (!data ||
+      fwrite (&current, sizeof (int), 1, data) != 1 ||
+      fwrite (&max, sizeof (int), 1, data) != 1 ||
+      fwrite (chunks, sizeof (chunk), MAXDELTA+1, data) != MAXDELTA+1)
+    {
+      fprintf (stderr, "Error writing to '%s': ", fname);
+      perror ("queue_save_state ()");
+      exit (2);
+    }
+
+  fclose (data);
+}
+
+
+void queue_restore_state (const char *fname)
+
+{
+  assert (chunks);
+
+  FILE *data = fopen (fname, "rb");
+
+  if (!data ||
+      fread (&current, sizeof (int), 1, data) != 1 ||
+      fread (&max, sizeof (int), 1, data) != 1 ||
+      fread (chunks, sizeof (chunk), MAXDELTA+1, data) != MAXDELTA+1)
+    {
+      fprintf (stderr, "Error reading from '%s': ", fname);
+      perror ("queue_restore_state ()");
+      exit (2);
+    }
+
+  fclose (data);
+}
+
+
+void queue_extend_depth (int delta)
+
+{
+  // If we are extending an restore search we have to go deeper the the last time.
+  if (current > MAXCOST)
+    MAXCOST = current + delta - 1;
+  else
+    MAXCOST += delta;
 }

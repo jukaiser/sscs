@@ -7,6 +7,7 @@ typedef enum {dir_north, dir_northeast, dir_east, dir_southeast, dir_south, dir_
 
 extern char *PATH;		// Where to look for files
 extern char *F_TEMPFILES;	// Format for temporary file names
+extern char *SAVEFILE;		// File for saving information needed for contiuing/extending a finished search
 
 extern int   MAXCOST;		// Maximum cost of reaction chains we will look at.
 

@@ -10,6 +10,7 @@
 // -> config.h!
 char *PATH	  = "test";
 char *F_TEMPFILES = "tmp/%02u/chunk-%04u-%09u.raw";
+char *SAVEFILE	  = "tmp/status.save";
 int   MAXCOST	  = 8192;
 int   MAXWIDTH	  = 128;
 int   MAXHEIGHT	  = 64;
@@ -73,6 +74,7 @@ static cfg_var config [] =
   {
     {"PATH",		STRING,  &PATH},
     {"F_TEMPFILES",	STRING,  &F_TEMPFILES},
+    {"SAVEFILE",	STRING,  &SAVEFILE},
     {"MAXCOST",		NUM,     &MAXCOST},
     {"MAXWIDTH",	NUM,     &MAXWIDTH},
     {"MAXHEIGHT",	NUM,     &MAXHEIGHT},
