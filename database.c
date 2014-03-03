@@ -188,7 +188,7 @@ object *db_load_space_ships (void)
 
   if (!result)
     {
-      fprintf (stderr, "Please check database! No ships found with SQL_F_COUNT_SPACESHIPS?");
+      fprintf (stderr, "Please check database! No ships found with SQL_SPACESHIPS?");
       exit (2);
     }
 
@@ -210,6 +210,9 @@ object *db_load_space_ships (void)
       ret [i].dx = atoi (row [3]);
       ret [i].dy = atoi (row [4]);
       ret [i].dt = atoi (row [5]);
+      ret [i].phase = atoi (row [6]);
+      ret [i].offX = atoi (row [7]);
+      ret [i].offY = atoi (row [8]);
       obj_mark_first (&ret [i]);
       ret [i].wanted = false;
       for (j = 0; j < nSHIP_DIRS; j++)

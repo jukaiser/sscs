@@ -786,63 +786,6 @@ void obj_mark_first (object *o)
 }
 
 
-/*
-void phases_load (object *o, const char *name, const char *pat_str)
-
-{
-  int i;
-
-  pat_from_string (pat_str);
-  pat_envelope (&lab [0]);
-  o->phases [0].pat = pat_compact (&lab [0], NULL);
-  o->phases [0].offX = 0;
-  o->phases [0].offY = 0;
-  phases_mark_first (&o->phases [0]);
-
-  for (i = 1; i < o->nrPhases; i++)
-    {
-      pat_generate (&lab [i-1], &lab [i]);
-      if (!W(&lab[i]))
-	{
-	  fprintf (stderr, "object '%s' dies after %d phases!\n", name, i);
-	  exit (2);
-	}
-      pat_envelope (&lab [i]);
-      o->phases [i].pat = pat_compact (&lab [i], NULL);
-      o->phases [i].offX = lab [i].left - lab [0].left;
-      o->phases [i].offY = lab [i].top - lab [0].top;
-      phases_mark_first (&o->phases [i]);
-    }
-}
-
-
-void phases_derive (object *v1, pat_xform pxf, object *o)
-
-{
-  int i, p0left = 0, p0top = 0;
-
-  o->nrPhases = v1->nrPhases;
-  ALLOC(phase,o->phases,o->nrPhases)
-
-  for (i = 0; i < o->nrPhases; i++)
-    {
-      pattern *temp = pat_apply_xform (&lab [i], pxf);
-      if (!i)
-	{
-	  p0left = temp->left;
-	  p0top = temp->top;
-	}
-
-      o->phases [i].pat = pat_compact (temp, NULL);
-      o->phases [i].offX = temp->left - p0left;
-      o->phases [i].offY = temp->top - p0top;
-      phases_mark_first (&o->phases [i]);
-      free (temp);
-    }
-}
-*/
-
-
 int obj_back_trace (void)
 // we seam to have found some objects ... trace all of them back ot where they started.
 // return a generation number *near* the time the latest of them appeared.
@@ -966,27 +909,6 @@ if (lab[gen].top <= 0 || lab[gen].left <= 0) {pat_dump (&lab[gen], true); pat_du
   *n = nFound;
   return findings;
 }
-
-
-/*
-bool phase_match (phase *ph, int g, int x, int y)
-
-{
-  int OK = true, dx, dy;
-  pattern *pat = ph->pat;
-
-  x += ph->offX;
-  y += ph->offY;
-  for (dy = 0; OK && dy <= pat->bottom; dy++)
-    for (dx = 0; OK && dx <= pat->right; dx++)
-      if (pat->cell [dy][dx] != UNDEF && pat->cell [dy][dx] != lab [g].cell [y-1+dy][x-1+dx])
-	OK = false;
-
-  return OK;
-}
-
-
-*/
 
 
 bool pat_compare (pattern *p1, pattern *p2)

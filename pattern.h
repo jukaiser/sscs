@@ -47,6 +47,8 @@ typedef struct
     int      firstX, firstY;		// coord's of first ALIVE pixel in pat
     int      dx, dy, dt;		// speed and period of the object (if applicable)
 					// dx=dy=0, dt=1 -> still life, dx=dy=0, dt>1 osci
+    int      offX, offY;		// Offset of current phase against phase 0
+    int      phase;			// Current phase
     bool     wanted;			// if wanted == false: prune current reaction!
   } object;
 
