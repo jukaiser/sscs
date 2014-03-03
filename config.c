@@ -149,7 +149,8 @@ static named_const constants [] =
     {NULL}
   };
 
-static int parse_constant (const char *var, const char **val)
+
+static int parse_constant (const char *var, const char **val, bool isArray)
 
 {
   char buf [11];
@@ -160,7 +161,7 @@ static int parse_constant (const char *var, const char **val)
     buf [i++] = toupper (*((*val)++));
   buf [i] = '\0';
 
-  if (**val)
+  if (!isArray && **val)
     fprintf (stderr, "config: Variable '%s': ignoring trailing junk after value (%s)!\n", var, buf);
 
   for (c = constants; c->name; c++)
@@ -191,7 +192,7 @@ static void handle_num (const char *var, int *v_ptr, const char *val)
     val++;
   else if (isalpha (*val))
     {
-      *v_ptr = parse_constant (var, &val);
+      *v_ptr = parse_constant (var, &val, false);
       return;
     }
 
@@ -210,7 +211,7 @@ static void handle_bool (const char *var, bool *v_ptr, const char *val)
     val++;
   else if (isalpha (*val))
     {
-      *v_ptr = parse_constant (var, &val);
+      *v_ptr = parse_constant (var, &val, false);
       return;
     }
 
@@ -306,12 +307,15 @@ static void handle_array (const char *var, int **v_ptr, int *n_ptr, char *val)
   end = val;
   while (*end)
     {
-      if (!isdigit (*end))
+      if (isalpha (*val))
+	(*v_ptr) [(*n_ptr)++] = parse_constant (var, &end, true);
+      else if (isdigit (*end))
+        (*v_ptr) [(*n_ptr)++] = strtol (end, &end, 0);
+      else
 	{
 	  fprintf (stderr, "config: Variable '%s': ignoring trailing junk '%s' after value (%d)!\n", var, end, *v_ptr);
 	  return;
 	}
-      (*v_ptr) [(*n_ptr)++] = strtol (end, &end, 0);
       end = skip_ws (end);
     }
 }

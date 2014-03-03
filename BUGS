@@ -9,9 +9,6 @@ Object (ship) detection:
 	  As a result, heisenburps could lead to errors.
 	  => remove the ship from EVERY generation - should be cheaper, anyway.
 
-Config loader:
-	+ FIX ME: use parse_constant () for array TOO!
-
 Features missing:
 	+ implement continuing an interrupted search by using the saved files provided by the previous run.
 	+ support for more then one rake type per project.
