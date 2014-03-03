@@ -237,7 +237,7 @@ static void handle_string (const char *var, char **v_ptr, const char *val)
 static void handle_array (const char *var, int **v_ptr, int *n_ptr, char *val)
 
 {
-  char *end;
+  const char *end;
 
   // special case: cost vector might be defined by '[' step '%' nLanes ']'
   // Idea: there is only one way to change lanes, and step is defining the step size of those changes.
@@ -310,13 +310,13 @@ static void handle_array (const char *var, int **v_ptr, int *n_ptr, char *val)
       if (isalpha (*val))
 	(*v_ptr) [(*n_ptr)++] = parse_constant (var, &end, true);
       else if (isdigit (*end))
-        (*v_ptr) [(*n_ptr)++] = strtol (end, &end, 0);
+        (*v_ptr) [(*n_ptr)++] = strtol (end, (char **)&end, 0);
       else
 	{
 	  fprintf (stderr, "config: Variable '%s': ignoring trailing junk '%s' after value (%d)!\n", var, end, *v_ptr);
 	  return;
 	}
-      end = skip_ws (end);
+      end = skip_ws ((char *)end);
     }
 }
 
@@ -337,7 +337,7 @@ void config_load (const char *cfg_name)
   while (fgets (buffer, 4096, cfg))
     {
       // Kill comments
-      char *split = strrchr (buffer, '#');
+      char *split = strchr (buffer, '#');
       char *cp1 = var, *cp2 = buffer;
       if (split) *split = '\0';
 

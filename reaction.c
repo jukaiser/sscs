@@ -160,6 +160,8 @@ static void explodes_at (reaction *r, int i)
 
 {
   db_reaction_finish (r, (ROWID)0, 0, 0, i, dbrt_unfinished);
+printf ("FATAL: should no longer happen! [%llu, %d]\n!", r->rId, i);
+assert (0);
 }
 
 
@@ -230,11 +232,7 @@ static void stabilizes (reaction *r, target *old, int i, int p)
 
   // build all possible reactions for these targets, queue them for later analysis and check them against our db.
   // NOTE: since we are handling starting patterns here, we don't have a "last lane used", yet.
-// printf ("TO DO: build_reactions (nph, -1);\n");
   build_reactions (p, r->b, false, r->cost, r->lane + tgt_adjust_lane (r->b, old, new));
-// a = tgt_adjust_lane (r->b, old, new);
-// printf ("[%d, %d] -> [%d, %d] => %d\n", old->bottom, old->left, new->bottom, new->left, a);
-//  build_reactions (p, r->b, r->cost, r->lane + a);
 
   // don't let them linger around any longer then they are needed!
   free_targets ();
@@ -249,7 +247,6 @@ static void unstable (reaction *r, int i)
 
 
 int search_ships (reaction *r, int gen)
-// TO DO: improve detection so that only ships get counted that will *really* survive!
 
 {
   found *f;
@@ -321,10 +318,7 @@ assert (!r->rId);
 
   if (i == flyGen+1 && pat_match (&lab [flyGen], flyX, flyY, bullets [r->b].p))
     {
-      int keep = flyGen-1;
       pat_remove (&lab [flyGen], flyX, flyY, bullets [r->b].p);
-//       printf ("maybe fly-by (%d):\n", flyGen);
-// if (W(&lab [flyGen]) <= 0) { printf ("WOOT?\n"); for (i = 0; i < flyGen; i++) pat_dump (&lab [i], true); exit (0); }
 
       // Synchronise reaction with the uncollided target
       while (flyGen % tgt.nph)
@@ -350,17 +344,14 @@ assert (!r->rId);
 	    }
 	}
 
-      // OK. The bullet escapes. But the target did not survive unharmed. Note the escaping ship and continue!
-      // TO DO: that's not QUITE correct!
-printf ("EMITTING BULLET!!\n");
-      emit (r, keep, flyX, flyY, bullets [r->b].oId);
+      // We did find the bullet where we would expect it if this were a fly-by.
+      // But the remaining pattern after removal of that bullet did not match the original target.
+      // So let's Forget about it! (i.e.: take one step back)
+      i--;
     }
-  flyGen = i-1;
 
   // Here: no fly by. Follow the reaction until it stabilizes.
-if (flyGen == 0) pat_dump (&lab [0], true); 
-assert (flyGen > 0);
-  for (i = flyGen+1; i <= MAXGEN+2; i++)
+  for (i; i <= MAXGEN+2; i++)
     {
 // if (lab[i-1].top <= 1) printf ("gen=%d, fly=%d, i-2.top: %d\n", i, flyGen, lab [i-2].top);
 // assert (lab[i-1].top > 1);
