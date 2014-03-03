@@ -97,6 +97,9 @@ CREATE TABLE objects (
   dx int(11) NOT NULL,
   dy int(11) NOT NULL,
   dt int(11) NOT NULL,
+  phase int(11) NOT NULL,
+  offX int(11) NOT NULL,
+  offY int(11) NOT NULL,
   UNIQUE KEY (rle)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
