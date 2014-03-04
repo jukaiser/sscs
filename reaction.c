@@ -185,6 +185,7 @@ static bool fly_by (reaction *r, target *tgt, int i)
       assert (r->lane <= UINT8_MAX);
       r->rId = 0;
 
+if (!db_is_reaction_finished (r->tId, r->b, r->lane)) printf ("REFLY: %llu, %d, %d\ni", r->tId, r->b, r->lane);
       return !db_is_reaction_finished (r->tId, r->b, r->lane);
     }
 
@@ -249,6 +250,7 @@ int search_ships (reaction *r, int gen)
   if (!f)
     {
       // obj_search () found something we do NOT like to find. Discard this reaction!
+      db_reaction_emits (r->rId);
       prune (r);
       return -1;
     }

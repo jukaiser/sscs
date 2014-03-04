@@ -347,6 +347,18 @@ bool db_reaction_keep (reaction *r)
 }
 
 
+void db_reaction_emits (ROWID rId)
+
+{
+  char query [4096];
+
+  snprintf (query, 4095, SQL_F_REACTION_EMITS, rId);
+
+  if (mysql_query (con, query))
+    finish_with_error (con);
+}
+
+
 void  db_store_emit (ROWID rId, ROWID oId, int offX, int offY, int gen)
 
 {
@@ -356,10 +368,7 @@ void  db_store_emit (ROWID rId, ROWID oId, int offX, int offY, int gen)
   if (mysql_query (con, query))
     finish_with_error (con);
 
-  snprintf (query, 4095, SQL_F_REACTION_EMITS, rId);
-
-  if (mysql_query (con, query))
-    finish_with_error (con);
+  db_reaction_emits (rId);
 }
 
 
