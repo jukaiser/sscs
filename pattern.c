@@ -283,6 +283,9 @@ bool pat_generate (pattern *p1, pattern *p2)
   // update bounding box
   pat_shrink_bbox (p2);
 
+// we do not like touching the border ...
+assert (!(p2->top <= 3 || p2->left <= 3 || p2->bottom >= p2->sizeY - 3 - 1 || p2->right >= p2->sizeX - 3 - 1));
+
   // "Todos muertos"?
   return (H(p2) > 0);
 }
@@ -767,21 +770,21 @@ void obj_mark_first (object *o)
 
 {
   assert (o);
-  assert (o->pat);
-  assert (o->pat->cell);
-  assert (o->pat->cell [0]);
-  assert (o->pat->top == 0);
-  assert (o->pat->left == 0);
-  assert (W(o->pat) > 0);
-  assert (H(o->pat) > 0);
+  assert (o->enveloped);
+  assert (o->enveloped->cell);
+  assert (o->enveloped->cell [0]);
+  assert (o->enveloped->top == 0);
+  assert (o->enveloped->left == 0);
+  assert (W(o->enveloped) > 0);
+  assert (H(o->enveloped) > 0);
 
-  o->firstY = o->pat->top + 1;
-  for (o->firstX = o->pat->left+1; o->firstX < o->pat->right; o->firstX++)
-    if (o->pat->cell [o->firstY][o->firstX] == ALIVE)
+  o->firstY = o->enveloped->top + 1;
+  for (o->firstX = o->enveloped->left+1; o->firstX < o->enveloped->right; o->firstX++)
+    if (o->enveloped->cell [o->firstY][o->firstX] == ALIVE)
       return;
 
   // we're not supposed to end here ...
-  pat_dump (o->pat, true);
+  pat_dump (o->enveloped, true);
   assert (0);
 }
 
@@ -794,16 +797,14 @@ int obj_back_trace (void)
   int i, g, max = 0;
   found *o;
 
-  pattern *temp, *temp2;
+  pattern *temp;
 
   for (i = 0; i < nFound; i++)
     {
       int dx, dy;
 
       o = &findings [i];
-      temp2 = pat_compact (o->obj->pat, NULL);	// ouch my neck??
-      pat_shrink_bbox (temp2);
-      temp = pat_compact (temp2, NULL);	// ouch my neck??
+      temp = o->obj->compact;
 
       // For easy removeal without knowing all phases of the found objects we assume that P4 will work ...
       // TO DO: re-implement this to correctly work with other periods!
@@ -838,11 +839,6 @@ int obj_back_trace (void)
       pat_remove (&lab [max], x, y, temp);
     }
 
-  pat_deallocate (temp2);
-  free (temp2);
-  pat_deallocate (temp);
-  free (temp);
-
   return max;
 }
 
@@ -850,7 +846,6 @@ int obj_back_trace (void)
 
 found *obj_search (int gen, object *objs, int *n)
 // Try to find the objects in *objs in generation gen.
-// If dir tells us so, we then search of the first or last of each found object.
 
 {
   int x, y, t, l, b, r, dx, dy;
@@ -862,7 +857,7 @@ found *obj_search (int gen, object *objs, int *n)
   object *o;
   for (o = objs; o->name; o++)
     {
-      pattern *pat = o->pat;
+      pattern *pat = o->enveloped;
 
       assert (pat->top == 0);
       assert (pat->left == 0);
@@ -1137,11 +1132,14 @@ int tgt_count_lanes (const target *const tgt, int _b)
 }
 
 
+/*
 bool pat_touches_border (pattern *p, int dist)
 
 {
+assert (!(p->top <= dist || p->left <= dist || p->bottom >= p->sizeY - dist - 1 || p->right >= p->sizeX - dist - 1));
   return (p->top <= dist || p->left <= dist || p->bottom >= p->sizeY - dist - 1 || p->right >= p->sizeX - dist - 1);
 }
+*/
 
 
 int tgt_adjust_lane (int _b, target *old, target *new)

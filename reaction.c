@@ -313,10 +313,8 @@ assert (!r->rId);
 	free_target (&tgt);
 	return;
       }
-    else if (pat_touches_border (&lab [i], 3))
-      break;
 
-  if (i == flyGen+1 && pat_match (&lab [flyGen], flyX, flyY, bullets [r->b].p))
+  if (/* i == flyGen+1 && */ pat_match (&lab [flyGen], flyX, flyY, bullets [r->b].p))
     {
       pat_remove (&lab [flyGen], flyX, flyY, bullets [r->b].p);
 
@@ -346,7 +344,7 @@ assert (!r->rId);
 
       // We did find the bullet where we would expect it if this were a fly-by.
       // But the remaining pattern after removal of that bullet did not match the original target.
-      // So let's Forget about it! (i.e.: take one step back)
+      // So let's forget about it! (i.e.: take one step back)
       i--;
     }
 
@@ -361,29 +359,6 @@ assert (!r->rId);
 	  free_target (&tgt);
 	  return;
 	}
-      else if (pat_touches_border (&lab [i], 2))
-	{
-	  i = search_ships (r, i);
-	  if (i < 0)
-	    {
-	      free_target (&tgt);
-	      return; // reaction was pruned.
-	    }
-
-	  if (!W(&lab [i]))
-	    {
-	      dies_at (r, i);
-	      free_target (&tgt);
-	      return;
-	    }
-	  else if (pat_touches_border (&lab [i], 2))
-	    {
-	      explodes_at (r, i);
-	      free_target (&tgt);
-	      return;
-	    }
-	}
-assert (lab[i].top > 1);
 
       // Stabilized? Just check for P2 here, because that's cheap and anything P3 or beyond is too rare to bother.
       if (i-2 >= 0 && pat_compare (&lab [i], &lab [i-2]))
@@ -419,12 +394,6 @@ assert (lab[i].top > 1);
 	  free_target (&tgt);
 	  return;
 	}
-      else if (pat_touches_border (&lab [MAXGEN + p], 2))
-	{
-	  explodes_at (r, MAXGEN + p);
-	  free_target (&tgt);
-	  return;
-	}
 
       // Check if lab [] repeats with delta = p
       if (pat_compare (&lab [MAXGEN + p], &lab [MAXGEN]))
@@ -457,4 +426,6 @@ void init_reactions (void)
           
   // load all standard ships so we can search for them ;)
   ships = db_load_space_ships ();
+
+// {int i; for (i = 0; ships [i].id > 0; i++) printf ("%d: Phase %d of '%s': (%d, %d)\n", i, ships [i].phase, ships [i-ships [i].phase].name, ships [i].offX, ships [i].offY);}
 }

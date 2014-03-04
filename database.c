@@ -204,8 +204,9 @@ object *db_load_space_ships (void)
 
       ret [i].id = strtoull (row [0], NULL, 0);
       pat_from_string (row [1]);
+      ret [i].compact = pat_compact (&lab [0], NULL);
       pat_envelope (&lab [0]);
-      ret [i].pat = pat_compact (&lab [0], NULL);
+      ret [i].enveloped = pat_compact (&lab [0], NULL);
       ret [i].name = strdup (row [2]); if (!ret [i].name) { perror ("db_load_space_ships - strdup"); exit (2); }
       ret [i].dx = atoi (row [3]);
       ret [i].dy = atoi (row [4]);
@@ -254,7 +255,8 @@ object *db_load_space_ships (void)
     }
 
   ret [n].id = 0;
-  ret [n].pat = NULL;
+  ret [n].enveloped = NULL;
+  ret [n].compact = NULL;
   ret [n].name = NULL;
 
   mysql_free_result (result);
