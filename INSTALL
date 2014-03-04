@@ -29,8 +29,27 @@ Setting up database:
 	- You'll probably want to disable binary logging too, as it might easily eat gigabytes, and - after all -
 	  you're not running a medical database here or something.
 
-Edit test/default.cfg (or make your on copy of it):
+Edit one of the provided .cfg files under the directory "test" (or make your on copy of one):
 	- Adapt DBHOST ... DBPASSWD to your needs.
 	- If you like you could change the PATH Definition at the top.
 	  It tells the program where to look for other files (like the starting pattern file defined by START)
 	- Take a look at the other definitions there.
+	- Make sure that you have PATH/F_TEMPFILES point to a place with lots of free disk space.
+	- For your first few tries you should probably set MAXCOST not too high.
+	  Size of database and temporary storage increases exponentially with MAXCOST.
+
+Make sure that files generated using  F_TEMPFILES as a template good be used (i.e.: create the directory structure
+needed for those files).
+
+You can now start ./sscs <your.cfg> for running the search defined by <your.cfg>
+
+For extending a previously *completed* run you could run ./sscs --extend-by <nr> <your.cfg> which will use
+saved data from the last run to continue the search defined by <your.cfg> for another <nr> levels.
+You should *not* use this invocation style if you altered the database content, the saved files or the .cfg
+in any way. It will almost certainly fail and destroy your previously accuired data.
+
+After you are finished with a given searc, you could free the disk space allcoted for the temprory files.
+
+If you want to rerun a search you should either drop-and-recreate the entire database, use a completely new
+one or truncate the tables like in "truncate target; truncate reaction; truncate emitted; truncate chain"
+before you rerun ./sscs --extend-by <nr> <your.cfg>
