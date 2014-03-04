@@ -39,9 +39,10 @@ typedef struct
     int      X, Y;			// position of *this* phase
   } target;
 
-typedef struct
+typedef struct _obj
   {
     ROWID    id;			// ROW ID in database table
+    struct _obj *base;			// ptr to phase 0 of current object. NOTE: all other phases must be addressable base [phase]!
     pattern *enveloped;
     pattern *compact;
     char    *name;

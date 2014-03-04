@@ -56,7 +56,7 @@ char *SQL_F_REACTION_EMITS = "UPDATE reaction SET emits_ships = 'true' WHERE rId
 char *SQL_F_FINISH_REACTION = "UPDATE reaction SET result_tId = %llu, offX = %d, offY = %d, gen = %d, result = '%s', cost = %u WHERE rId = %llu";
 char *SQL_F_STORE_EMIT = "INSERT INTO emitted (eId, rId, oId, offX, offY, gen) VALUES (NULL, %llu, %llu, %d, %d, %d)";
 char *SQL_COUNT_SPACESHIPS = "SELECT COUNT(*) FROM objects WHERE dx <> 0 OR dy <> 0";
-char *SQL_SPACESHIPS = "SELECT oId, rle, name, dx, dy, dt, phase, offX, offY FROM objects WHERE dx <> 0 OR dy <> 0";
+char *SQL_SPACESHIPS = "SELECT oId, rle, name, dx, dy, dt, phase, offX, offY FROM objects WHERE dx <> 0 OR dy <> 0 ORDER BY name, phase";
 
 
 // <- config.h

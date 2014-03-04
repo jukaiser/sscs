@@ -212,6 +212,11 @@ object *db_load_space_ships (void)
       ret [i].dy = atoi (row [4]);
       ret [i].dt = atoi (row [5]);
       ret [i].phase = atoi (row [6]);
+      if (ret [i].phase == 0)
+	ret [i].base = &ret [i];
+      else
+	 ret [i].base = ret [i-1].base;
+assert (&ret [i] == (ret [i].base + ret [i].phase));
       ret [i].offX = atoi (row [7]);
       ret [i].offY = atoi (row [8]);
       obj_mark_first (&ret [i]);

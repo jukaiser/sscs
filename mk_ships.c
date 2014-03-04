@@ -54,8 +54,8 @@ if (!f) { perror (fname); exit (2); }
       for (j = 0; j < 4; j++)
 	{
 	  rle = pat_rle (&lab [j]);
-	  printf ("INSERT INTO objects VALUES (NULL, '%s', '%s:%d', %d, %d, %d, %d, 4, %d, %d, %d);\n",
-		  rle, ships [i], j, W(&lab[j]), H(&lab[j]), lab[4].left-lab[0].left, lab[4].top-lab[0].top, j, lab[j].left-lab[0].left, lab[j].top-lab[0].top);
+	  printf ("INSERT INTO objects VALUES (NULL, '%s', '%s', %d, %d, %d, %d, 4, %d, %d, %d);\n",
+		  rle, ships [i], W(&lab[j]), H(&lab[j]), lab[4].left-lab[0].left, lab[4].top-lab[0].top, j, lab[j].left-lab[0].left, lab[j].top-lab[0].top);
 	  if (strcmp (rle, "o$b2o$2o!") == 0)
 	    printf ("INSERT INTO bullets VALUES (1,'gl-se',LAST_INSERT_ID(),-4,0,'BOTTOMLEFT',0,-1,1,1,8);\n");
 	}
