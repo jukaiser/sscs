@@ -185,7 +185,6 @@ static bool fly_by (reaction *r, target *tgt, int i)
       assert (r->lane <= UINT8_MAX);
       r->rId = 0;
 
-if (!db_is_reaction_finished (r->tId, r->b, r->lane)) printf ("REFLY: %llu, %d, %d\ni", r->tId, r->b, r->lane);
       return !db_is_reaction_finished (r->tId, r->b, r->lane);
     }
 
@@ -278,19 +277,23 @@ void handle (reaction *r)
 
 assert (r);
 assert (!r->rId);
-  // Maybe the collision has been queued more then once.
-  // And maybe *we* are not handling the cheapest of those.
-  // Since we are queueing reactions in order of least cost we are able to check this.
-  if (!db_reaction_keep (r))
-    return;
-
-  // Fetch our target from the datebase
-  db_target_fetch (r, &tgt);
 
   // if we detect a fly-by condition we might want to immediately rerun the reaction on a higher lane ...
+  re_fly = false;
   do
     {
-      // We did not detect a fly by condition (yet)
+      // Maybe the collision has been queued more then once.
+      // And maybe *we* are not handling the cheapest of those.
+      // Since we are queueing reactions in order of least cost we are able to check this.
+      if (!db_reaction_keep (r))
+	return;
+
+      // Fetch our target from the datebase
+      // BUT: only if this is not a fly-by-rerun
+      if (!re_fly)
+	db_target_fetch (r, &tgt);
+
+      // reset the "fly by detected" flag.
       re_fly = false;
 
       // Build collision defined by our reaction -> lab [0]
