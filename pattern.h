@@ -79,7 +79,6 @@ bool pat_match (pattern *p1, int offX, int offY, pattern *p2);
 void pat_remove (pattern *p1, int offX, int offY, pattern *p2);
 void pat_load (FILE *f);
 void pat_from_string (const char *str);
-// bool pat_touches_border (pattern *p, int dist);
 char *pat_rle (pattern *pat);
 bool pat_compare (pattern *p1, pattern *p2);
 void obj_mark_first (object *p);

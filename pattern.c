@@ -791,52 +791,48 @@ void obj_mark_first (object *o)
 
 int obj_back_trace (void)
 // we seam to have found some objects ... trace all of them back ot where they started.
-// return a generation number *near* the time the latest of them appeared.
+// return the generation number when the latest of them appeared.
 
 {
-  int i, g, max = 0;
-  found *o;
-
-  pattern *temp;
+  int i, max = 0;
 
   for (i = 0; i < nFound; i++)
     {
-      int dx, dy;
+      found *f;
+      object *base, *o;
+      int x, y, phase;
 
-      o = &findings [i];
-      temp = o->obj->compact;
-
-      // For easy removeal without knowing all phases of the found objects we assume that P4 will work ...
-      // TO DO: re-implement this to correctly work with other periods!
-      if (o->obj->dt != 1 && o->obj->dt != 2 && o->obj->dt != 4)
-	{
-	  fprintf (stderr, "Internal error: period must be 1, 2 or 4! [NYI] other periods not implemented yet!");
-	  exit (3);
-	}
-
-      dx = (4/o->obj->dt) * o->obj->dx;
-      dy = (4/o->obj->dt) * o->obj->dy;
+      f = &findings [i];
+      o = f->obj;
+      base = o->base;
+      phase = o->phase;
+      x = f->offX - o->offX;
+      y = f->offY - o->offY;
 
       // search for the first appearance of every object.
-      for (; o->gen >= 4; o->gen -= 4, o->offX -= dx, o->offY -= dy)
-	if (!pat_match (&lab [o->gen-4], o->offX-dx, o->offY-dy, temp))
-	  break;
+      for (; f->gen >= 0; f->gen --, phase--)
+	{
+	  object *po;
+
+	  if (phase < 0)
+	    {
+	      phase += o->dt;
+	      x -= o->dx;
+	      y -= o->dy;
+	    }
+
+	  po = base + phase;
+
+	  if (pat_match (&lab [f->gen], x+po->offX, y+po->offY, po->compact))
+	    pat_remove (&lab [f->gen], x+po->offX, y+po->offY, po->compact);
+	  else
+	    break;
+	}
+      f->gen++;
 
       // track the latest object!
-      if (max < o->gen)
-	max = o->gen;
-    }
-
-  // strip all them objects off.
-  for (i = 0; i < nFound; i++)
-    {
-      int x, y;
-
-      o = &findings [i];
-      x = o->offX + o->obj->dx * ((max-o->gen)/o->obj->dt);
-      y = o->offY + o->obj->dy * ((max-o->gen)/o->obj->dt);
-
-      pat_remove (&lab [max], x, y, temp);
+      if (max < f->gen)
+	max = f->gen;
     }
 
   return max;

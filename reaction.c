@@ -263,20 +263,13 @@ int search_ships (reaction *r, int gen)
   if (n < 1)
     return gen;
 
-// printf ("%llu emitting %d ships before gen %d>>\n", r->rId, n, gen);
-// if (n > 1) pat_dump (&lab [gen], true);
-
   // We know that at the current generation all objects in f have been around.
   // Find the point in time where the last ship appeared and remove them all.
   gen = obj_back_trace ();
 
-  // Show the emitted ships
+  // Store the emitted ships
   for (i = 0; i < n; i++)
     emit (r, f [i].gen, f [i].offX, f [i].offY, f [i].obj->id);
-// printf ("<< %llu done emitting for %d\n", r->rId, gen);
-
-  // maybe we are now smaller?
-  pat_shrink_bbox (&lab [gen]);
 
   return gen;
 }
@@ -381,7 +374,15 @@ assert (!r->rId);
       return; // reaction was pruned.
     }
   for (; i < MAXGEN; i++)
-    pat_generate (&lab [i], &lab [i+1]);
+    {
+      pat_shrink_bbox (&lab [i]);
+      if (!W(&lab [i]))
+	{
+	  dies_at (r, i);
+	  free_target (&tgt);
+	  return;
+	}
+    }
   p = 1 + i - MAXGEN;
 
   // OK. check lab [MAXGEN] for p <= MAXPERIOD ...
