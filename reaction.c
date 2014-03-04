@@ -296,56 +296,9 @@ assert (!r->rId);
   lab_init ();
   tgt_collide (&tgt, &bullets [r->b], r->lane, &flyX, &flyY, &flyGen);
 
-  // Fly-by detection ... generate until bullet would by definetly beyound target.
-  // TO DO: rethink this whole fly-by mess! Maybe we should just integrate this in the main generation loop
-  // and check for fly by when i == flyGen there
-  for (i = 1; i <= flyGen; i++)
-    if (!pat_generate (&lab [i-1], &lab [i]))
-      {
-	dies_at (r, i);
-	free_target (&tgt);
-	return;
-      }
-
-  if (/* i == flyGen+1 && */ pat_match (&lab [flyGen], flyX, flyY, bullets [r->b].p))
+  // Generate until MAXGEN or pattern stabilizes, or maybe until fly-by detected
+  for (i = 1; i <= MAXGEN+2; i++)
     {
-      pat_remove (&lab [flyGen], flyX, flyY, bullets [r->b].p);
-
-      // Synchronise reaction with the uncollided target
-      while (flyGen % tgt.nph)
-	{
-	  if (!pat_generate (&lab [flyGen], &lab [flyGen+1]))
-	    {
-	      dies_at (r, flyGen+1);
-	      free_target (&tgt);
-	      return;
-	    }
-
-	  flyGen++;
-	}
-
-      if (pat_match (&lab [flyGen], tgt.X, tgt.Y, tgt.pat))
-	{
-	  pat_remove (&lab [flyGen], tgt.X, tgt.Y, tgt.pat);
-	  if (W(&lab [flyGen]) <= 0)
-	    {
-	      fly_by (r, &tgt, i);
-	      free_target (&tgt);
-	      return;
-	    }
-	}
-
-      // We did find the bullet where we would expect it if this were a fly-by.
-      // But the remaining pattern after removal of that bullet did not match the original target.
-      // So let's forget about it! (i.e.: take one step back)
-      i--;
-    }
-
-  // Here: no fly by. Follow the reaction until it stabilizes.
-  for (i; i <= MAXGEN+2; i++)
-    {
-// if (lab[i-1].top <= 1) printf ("gen=%d, fly=%d, i-2.top: %d\n", i, flyGen, lab [i-2].top);
-// assert (lab[i-1].top > 1);
       if (!pat_generate (&lab [i-1], &lab [i]))
 	{
 	  dies_at (r, i);
@@ -364,9 +317,45 @@ assert (!r->rId);
 	  free_target (&tgt);
 	  return;
 	}
+
+      // Fly-by detection 
+      if (i == flyGen && pat_match (&lab [flyGen], flyX, flyY, bullets [r->b].p))
+	{
+	  pat_remove (&lab [flyGen], flyX, flyY, bullets [r->b].p);
+
+	  // Synchronise reaction with the uncollided target
+	  while (flyGen % tgt.nph)
+	    {
+	      if (!pat_generate (&lab [flyGen], &lab [flyGen+1]))
+		{
+		  dies_at (r, flyGen+1);
+		  free_target (&tgt);
+		  return;
+		}
+
+	      flyGen++;
+	    }
+
+	  if (pat_match (&lab [flyGen], tgt.X, tgt.Y, tgt.pat))
+	    {
+	      pat_remove (&lab [flyGen], tgt.X, tgt.Y, tgt.pat);
+	      if (W(&lab [flyGen]) <= 0)
+		{
+		  fly_by (r, &tgt, i);
+		  free_target (&tgt);
+		  return;
+		}
+	    }
+
+	  // We did find the bullet where we would expect it if this were a fly-by.
+	  // But the remaining pattern after removal of that bullet did not match the original target.
+	  // So let's forget about it! (i.e.: take one step back, and suppress fly-by detection)
+	  i--;
+	  flyGen = -1;
+	}
     }
 
-  // Maybe we didn't recognize a P2 because there is an (almost) emitted ship in our pattern?
+  // Maybe the reaction emitted a space ship? Then we might have missed a still life or P2 ...
   i = search_ships (r, MAXGEN+2);
   if (i < 0)
     {
