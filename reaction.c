@@ -173,30 +173,22 @@ static void emit (reaction *r, int gen, int offX, int offY, ROWID oId)
 }
 
 
-static void fly_by (reaction *r, target *tgt, int i)
-// TO DO: the complete fly-by detection mess has to be reworked.
-//	+ currently we have to increase the cost by one to make queue_insert () happy.
-//	  we should rather alter *r and rerun handle () then re-queue
-//	+ Check for stabilization during fly-by detection.
+static bool fly_by (reaction *r, target *tgt, int i)
 
 {
   db_reaction_finish (r, (ROWID)0, 0, 0, i, dbrt_flyby);
 
   if (SHIPMODE == 1 && r->lane + LANES < tgt_count_lanes (tgt, r->b))
     {
-      assert (r->lane + LANES <= UINT8_MAX);
+      r->lane += LANES;
+
+      assert (r->lane <= UINT8_MAX);
       r->rId = 0;
 
-      if (db_is_reaction_finished (r->tId, r->b, r->lane + LANES))
-	return;
-
-      // printf ("Requeing as (%d, %llu, %s, %u)\n",  new->cost, new->tId, bullets [new->b].name, new->lane);
-      if (!queue_insert (r->cost+1, r->tId, r->b, r->lane + LANES, r->delta))
-	{
-	  fprintf (stderr, "Q-insert failed (cost = %u)!\n", r->cost);
-	  exit (1);
-	}
+      return !db_is_reaction_finished (r->tId, r->b, r->lane);
     }
+
+  return false;
 }
 
 
@@ -280,6 +272,7 @@ void handle (reaction *r)
 {
   int flyX, flyY, flyGen, i, p;
   target tgt;
+  bool re_fly;
 
 assert (r);
 assert (!r->rId);
@@ -292,68 +285,83 @@ assert (!r->rId);
   // Fetch our target from the datebase
   db_target_fetch (r, &tgt);
 
-  // Build collision defined by our reaction -> lab [0]
-  lab_init ();
-  tgt_collide (&tgt, &bullets [r->b], r->lane, &flyX, &flyY, &flyGen);
-
-  // Generate until MAXGEN or pattern stabilizes, or maybe until fly-by detected
-  for (i = 1; i <= MAXGEN+2; i++)
+  // if we detect a fly-by condition we might want to immediately rerun the reaction on a higher lane ...
+  do
     {
-      if (!pat_generate (&lab [i-1], &lab [i]))
+      // We did not detect a fly by condition (yet)
+      re_fly = false;
+
+      // Build collision defined by our reaction -> lab [0]
+      lab_init ();
+      tgt_collide (&tgt, &bullets [r->b], r->lane, &flyX, &flyY, &flyGen);
+
+      // Generate until MAXGEN or pattern stabilizes, or maybe until fly-by detected
+      for (i = 1; i <= MAXGEN+2; i++)
 	{
-	  dies_at (r, i);
-	  free_target (&tgt);
-	  return;
-	}
-
-      // Stabilized? Just check for P2 here, because that's cheap and anything P3 or beyond is too rare to bother.
-      if (i-2 >= 0 && pat_compare (&lab [i], &lab [i-2]))
-	{
-	  p = 2;
-	  if (pat_compare (&lab [i-1], &lab [i-2]))
-	    p = 1;
-
-	  stabilizes (r, &tgt, i-2, p);
-	  free_target (&tgt);
-	  return;
-	}
-
-      // Fly-by detection 
-      if (i == flyGen && pat_match (&lab [flyGen], flyX, flyY, bullets [r->b].p))
-	{
-	  pat_remove (&lab [flyGen], flyX, flyY, bullets [r->b].p);
-
-	  // Synchronise reaction with the uncollided target
-	  while (flyGen % tgt.nph)
+	  if (!pat_generate (&lab [i-1], &lab [i]))
 	    {
-	      if (!pat_generate (&lab [flyGen], &lab [flyGen+1]))
-		{
-		  dies_at (r, flyGen+1);
-		  free_target (&tgt);
-		  return;
-		}
-
-	      flyGen++;
+	      dies_at (r, i);
+	      free_target (&tgt);
+	      return;
 	    }
 
-	  if (pat_match (&lab [flyGen], tgt.X, tgt.Y, tgt.pat))
+	  // Stabilized? Just check for P2 here, because that's cheap and anything P3 or beyond is too rare to bother.
+	  if (i-2 >= 0 && pat_compare (&lab [i], &lab [i-2]))
 	    {
-	      pat_remove (&lab [flyGen], tgt.X, tgt.Y, tgt.pat);
-	      if (W(&lab [flyGen]) <= 0)
-		{
-		  fly_by (r, &tgt, i);
-		  free_target (&tgt);
-		  return;
-		}
+	      p = 2;
+	      if (pat_compare (&lab [i-1], &lab [i-2]))
+		p = 1;
+
+	      stabilizes (r, &tgt, i-2, p);
+	      free_target (&tgt);
+	      return;
 	    }
 
-	  // We did find the bullet where we would expect it if this were a fly-by.
-	  // But the remaining pattern after removal of that bullet did not match the original target.
-	  // So let's forget about it! (i.e.: take one step back, and suppress fly-by detection)
-	  i--;
-	  flyGen = -1;
+	  // Fly-by detection 
+	  if (i == flyGen && pat_match (&lab [flyGen], flyX, flyY, bullets [r->b].p))
+	    {
+	      pat_remove (&lab [flyGen], flyX, flyY, bullets [r->b].p);
+
+	      // Synchronise reaction with the uncollided target
+	      while (flyGen % tgt.nph)
+		{
+		  if (!pat_generate (&lab [flyGen], &lab [flyGen+1]))
+		    {
+		      dies_at (r, flyGen+1);
+		      free_target (&tgt);
+		      return;
+		    }
+
+		  flyGen++;
+		}
+
+	      if (pat_match (&lab [flyGen], tgt.X, tgt.Y, tgt.pat))
+		{
+		  pat_remove (&lab [flyGen], tgt.X, tgt.Y, tgt.pat);
+		  if (W(&lab [flyGen]) <= 0)
+		    {
+		      if (!fly_by (r, &tgt, i))
+			{
+			  free_target (&tgt);
+			  return;
+			}
+
+		      // Here: we have a fly-by condition, and fly_by () has decided to let us rerun the reaction.
+		      // r is already updated to reflect this.
+		      re_fly = true;
+		      break;
+		    }
+		}
+
+	      // We did find the bullet where we would expect it if this were a fly-by.
+	      // But the remaining pattern after removal of that bullet did not match the original target.
+	      // So let's forget about it! (i.e.: take one step back, and suppress fly-by detection)
+	      i--;
+	      flyGen = -1;
+	    }
 	}
     }
+  while (re_fly);
 
   // Maybe the reaction emitted a space ship? Then we might have missed a still life or P2 ...
   i = search_ships (r, MAXGEN+2);
