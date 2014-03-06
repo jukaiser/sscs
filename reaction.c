@@ -261,6 +261,8 @@ int search_ships (reaction *r, int gen)
   gen = obj_back_trace ();
 
   // Store the emitted ships
+  // TO DO: recalculate the offsets. They should be adjusted for the position of the orignal pattern.
+  //        f [i].offX/offY are absolute positions within lab [gen]
   for (i = 0; i < n; i++)
     emit (r, f [i].gen, f [i].offX, f [i].offY, f [i].obj->id);
 

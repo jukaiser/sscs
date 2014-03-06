@@ -1,3 +1,9 @@
+BUGS:
+	+ search_ships () should call emit () using the *relative* position of the emitted ship
+	  against the initial target.
+	  currently the "offX" and "offY" columns in the database are fed with meaningless absoulte
+	  values.
+
 FIXED:
 	+ Fly-by detection
 	+ Object (ship) detection / removal
