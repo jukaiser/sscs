@@ -1,12 +1,10 @@
 BUGS:
-	+ search_ships () should call emit () using the *relative* position of the emitted ship
-	  against the initial target.
-	  currently the "offX" and "offY" columns in the database are fed with meaningless absoulte
-	  values.
 
 FIXED:
 	+ Fly-by detection
 	+ Object (ship) detection / removal
+	+ Fixed search_ships (), emit () and obj_back_trace () to get usable offsets
+	  for emitted space ships
 
 Features missing:
 	+ support for more then one rake type per project.

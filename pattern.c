@@ -824,7 +824,13 @@ int obj_back_trace (void)
 	  po = base + phase;
 
 	  if (pat_match (&lab [f->gen], x+po->offX, y+po->offY, po->compact))
-	    pat_remove (&lab [f->gen], x+po->offX, y+po->offY, po->compact);
+	    {
+	      pat_remove (&lab [f->gen], x+po->offX, y+po->offY, po->compact);
+
+	      // book keeping
+	      f->offX = x+po->offX;
+	      f->offY = y+po->offY;
+	    }
 	  else
 	    break;
 	}

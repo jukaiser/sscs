@@ -168,7 +168,7 @@ assert (0);
 static void emit (reaction *r, int gen, int offX, int offY, ROWID oId)
 
 {
-// printf ("calling db_store_emit (%llu, %llu, %d, %d, %d)\n", r->rId, oId, offX, offY, gen);
+  // printf ("calling db_store_emit (%llu, %llu, %d, %d, %d)\n", r->rId, oId, offX, offY, gen);
   db_store_emit (r->rId, oId, offX, offY, gen);
 }
 
@@ -238,7 +238,7 @@ static void unstable (reaction *r, int i)
 }
 
 
-int search_ships (reaction *r, int gen)
+static int search_ships (reaction *r, target *tgt, int gen)
 
 {
   found *f;
@@ -264,7 +264,7 @@ int search_ships (reaction *r, int gen)
   // TO DO: recalculate the offsets. They should be adjusted for the position of the orignal pattern.
   //        f [i].offX/offY are absolute positions within lab [gen]
   for (i = 0; i < n; i++)
-    emit (r, f [i].gen, f [i].offX, f [i].offY, f [i].obj->id);
+    emit (r, f [i].gen, f [i].offX-tgt->X, f [i].offY-tgt->Y, f [i].obj->id);
 
   return gen;
 }
@@ -370,8 +370,9 @@ assert (!r->rId);
     }
   while (re_fly);
 
-  // Maybe the reaction emitted a space ship? Then we might have missed a still life or P2 ...
-  i = search_ships (r, MAXGEN+2);
+  // Maybe the reaction emitted a space ship?
+  // We not only have to handle the emitted ship, but we also might have missed our pattern stabilizing some time ago.
+  i = search_ships (r, &tgt, MAXGEN+2);
   if (i < 0)
     {
       free_target (&tgt);
