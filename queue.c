@@ -14,7 +14,7 @@
 
 // one file will be about one MB in size ...
 // Just for fun. Performance impact of chosing a non perfect size is not too severe
-#define CHUNK	43690
+#define CHUNK	65534
 
 
 typedef struct

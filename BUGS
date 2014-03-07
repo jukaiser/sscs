@@ -1,3 +1,8 @@
+TODO:
+	+ evaluate alternative pattern representation / generation
+	+ probably: look at DB performance.
+	+ check: could we afford saving targets with the reactions? (Probably not)
+
 BUGS:
 
 FIXED:

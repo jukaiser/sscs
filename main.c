@@ -52,6 +52,7 @@ main (int argc, char **argv)
   queue_init ();
   MAXWIDTH = PRUNE_SX + MAXGEN+1+MAXPERIOD + 10;	// Make sure pattern evolution would never reach the border => simplify reliable ship detection
   MAXHEIGHT = PRUNE_SY + MAXGEN+1+MAXPERIOD + 10;	// Make sure pattern evolution would never reach the border => simplify reliable ship detection
+printf ("Labsize: %dx%dx%d\n", MAXWIDTH, MAXHEIGHT, MAXGEN+1+MAXPERIOD);
   lab_allocate (MAXWIDTH, MAXHEIGHT, MAXGEN+1+MAXPERIOD, MAX_FIND);
   if (RELATIVE != 1)
     {
