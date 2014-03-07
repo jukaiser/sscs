@@ -10,6 +10,8 @@ FIXED:
 	+ Object (ship) detection / removal
 	+ Fixed search_ships (), emit () and obj_back_trace () to get usable offsets
 	  for emitted space ships
+	+ (hopefully) fixed a mayor bug with tgt_adjust_lane ()
+	  leading to completely wrong recipes :(
 
 Features missing:
 	+ support for more then one rake type per project.

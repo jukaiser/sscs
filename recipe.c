@@ -246,9 +246,14 @@ static ROWID parent_reaction_of (ROWID rId)
 
       load_tgt_bbox (&new, i_tId, -offX, -offY);
 
+printf ("old: [top=%d, bottom=%d, left=%d, right=%d]\n", old.top, old.bottom, old.left, old.right);
+printf ("new: [top=%d, bottom=%d, left=%d, right=%d]\n", new.top, new.bottom, new.left, new.right);
+printf ("old_lane=%d, new_lane=%d, new_Lane_adj=%d\n", old_lane, new_lane, new_lane-tgt_adjust_lane (0, &old, &new), new_lane);
+printf ("correct cost: %d\n", cost_for (old_lane, new_lane-tgt_adjust_lane (0, &old, &new)));
+
       // printf ("old=%d, adj=%d, new=%d\n", old_lane, tgt_adjust_lane (0, &old, &new), new_lane);
       // printf ("%llu: %d ./. %d\n", toChk, delta, cost_for (old_lane - tgt_adjust_lane (0, &old, &new), new_lane));
-      if (delta == cost_for (old_lane - tgt_adjust_lane (0, &old, &new), new_lane))
+      if (delta == cost_for (old_lane + tgt_adjust_lane (0, &old, &new), new_lane))
 	{
 	  ret = toChk;
 	  recipe [n_recipe  ].rId = toChk;

@@ -1162,6 +1162,7 @@ int tgt_adjust_lane (int _b, target *old, target *new)
 	// Here: moving right *decreases* the lane number.
 	return (new->top - old->top)*b->lanes_per_height - (new->right - old->right)*b->lanes_per_width;
       case bottomleft:
+	// Moving down DECREASES lane number, moving right INCREASES it.
 	return -(new->bottom - old->bottom)*b->lanes_per_height + (new->left - old->left)*b->lanes_per_width;
       case bottomright:
 	return -(new->bottom - old->bottom)*b->lanes_per_height - (new->right - old->right)*b->lanes_per_width;

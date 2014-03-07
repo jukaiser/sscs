@@ -223,8 +223,7 @@ static void stabilizes (reaction *r, target *old, int i, int p)
   db_reaction_finish (r, new->id, new->left-old->left, new->top-old->top, i, dbrt_stable);
 
   // build all possible reactions for these targets, queue them for later analysis and check them against our db.
-  // NOTE: since we are handling starting patterns here, we don't have a "last lane used", yet.
-  build_reactions (p, r->b, false, r->cost, r->lane + tgt_adjust_lane (r->b, old, new));
+  build_reactions (p, r->b, false, r->cost, r->lane - tgt_adjust_lane (r->b, old, new));
 
   // don't let them linger around any longer then they are needed!
   free_targets ();
