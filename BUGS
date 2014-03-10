@@ -4,6 +4,8 @@ TODO:
 	+ check: could we afford saving targets with the reactions? (Probably not)
 
 BUGS:
+	+ for targets with a period other then P1, P2 or P4 we have to RETHINK the
+	  pregap calculations in tgt_collide() or adapt recipe.c
 
 FIXED:
 	+ Fly-by detection

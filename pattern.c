@@ -765,6 +765,22 @@ void pat_dump (pattern *p, bool withHeader)
 }
 
 
+int  pat_first_X (pattern *p, int Y)
+// find first living cell in row Y
+
+{
+  if (Y < p->top || Y > p->bottom)
+    return -1;
+
+  int firstX;
+  for (firstX = p->left; firstX < p->right; firstX++)
+    if (p->cell [Y][firstX] == ALIVE)
+      return firstX;
+
+  return -1; // row Y is empty
+}
+
+
 void obj_mark_first (object *o)
 // Search the first living cell (starting with (left, top)) and set firstX/Y accordingly
 

@@ -81,6 +81,7 @@ void pat_load (FILE *f);
 void pat_from_string (const char *str);
 char *pat_rle (pattern *pat);
 bool pat_compare (pattern *p1, pattern *p2);
+int  pat_first_X (pattern *p, int Y);
 void obj_mark_first (object *p);
 found *obj_search (int gen, object *objs, int *n);
 int obj_back_trace (void);
