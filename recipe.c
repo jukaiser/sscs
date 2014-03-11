@@ -443,14 +443,14 @@ assert (MAXPERIOD <= P_MAX);
 //printf ("R1L0 [0]: %d = %d-%d\n", xPos-R1L0_X [0], xPos, R1L0_X [0]);
       yPos += PART_DY;
       --n_recipe;
-      printf ("# Start with reaction %llu\n", recipe [n_recipe].rId);
+      printf ("#C Start with reaction %llu\n", recipe [n_recipe].rId);
       while (n_recipe > 0)
 	{
 	  assert (recipe [n_recipe].bId == 1);
 	  delay = (delay + recipe [n_recipe].delay) % recipe [n_recipe].nph;
-	  if (recipe [n_recipe].delta > 1) printf ("# REPHASE x%d\n", recipe [n_recipe].delta-1);
-	  if (delay) printf ("# DELAY %dgen\n", delay);
-	  // printf ("# FIRE 1RL0\n");
+	  if (recipe [n_recipe].delta > 1) printf ("#C REPHASE x%d\n", recipe [n_recipe].delta-1);
+	  if (delay) printf ("#C DELAY %dgen\n", delay);
+	  // printf ("#C FIRE 1RL0\n");
 	  for (j = 0; j < recipe [n_recipe].delta-1; j++)
 	    {
 	      pat_add (&result, xPos-rephaser_X, yPos, &rephaser);
@@ -462,7 +462,7 @@ assert (MAXPERIOD <= P_MAX);
 // printf ("R1L0 [%d]: %d = %d-%d\n", j, xPos-R1L0_X [j], xPos, R1L0_X [j]);
 	  yPos += PART_DY;
 	  n_recipe--;
-	  printf ("# FIRE 1RL0 [resulting reaction:%llu]\n", recipe [n_recipe].rId);
+	  printf ("#C FIRE 1RL0 [resulting reaction:%llu]\n", recipe [n_recipe].rId);
 	}
 
       for (j = 0; j < 2000; j++)
@@ -473,6 +473,7 @@ assert (MAXPERIOD <= P_MAX);
 	    printf ("..\n");
 	}
       pat_dump (&result, false);
+      printf ("\n");
       // printf ("x = %d, y = %d, rule = B3/S23\n%s\n", W(&result), H(&result), pat_rle (&result));
     }
 }

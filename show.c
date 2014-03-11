@@ -123,7 +123,7 @@ main (int argc, char **argv)
       mysql_free_result (result);
 
       tgt_collide (&t, &b, lane, &dummy, &dummy, &dummy);
-      printf ("#P %d 0\n", (i-2)*200);
+      printf ("#P %d 0\n#C reaction: %s\n", (i-2)*200, argv [i]);
       pat_dump (&lab [0], false);
       printf ("\n");
     }
