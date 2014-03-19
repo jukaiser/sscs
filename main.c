@@ -12,6 +12,7 @@
 #include "reaction.h"
 #include "database.h"
 #include "queue.h"
+#include "profile.h"
 
 
 static void Usage (const char *argv0)
@@ -43,6 +44,7 @@ main (int argc, char **argv)
 
   // Initialize all modules. (Starting with config, since config_load () might override variables used by other initialisations
   config_load (cfg_file);
+  _prof_init ();
   if (chdir (PATH) != 0)
     {
       perror (PATH);

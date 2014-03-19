@@ -12,9 +12,13 @@
 #include "database.h"
 #include "queue.h"
 
+#include "profile.h"
+
 
 static target **tgts;
-static object *ships;
+static object *ships = NULL;
+static found  *emitted;		// TO DO: ./. pattern.c::findings []
+static int    n_emitted = 0;
 
 
 int cost_for (int old_lane, int new_lane)
@@ -36,16 +40,15 @@ void reaction_targets_keep (int nph)
   int i;
 
   // sync all we know about tgts with the DB.
-  for (i = 0; i < nph; i++)
+  for (i = nph-1; i >= 0; i--)
     {
       char *rle = pat_rle (tgts [i]->pat);
-      if (!db_target_lookup (tgts [i], rle))
-        db_target_store (tgts [i], rle);
+      // if (!db_target_lookup (tgts [i], rle))
+      db_target_store (tgts [i], rle, (i < nph-1) ? tgts [i+1]->id : 0);
     }
 
   if (nph > 1)
-    for (i = 0; i < nph; i++)
-      db_target_link (i ? tgts [i-1]->id : tgts [nph-1]->id, tgts [i]->id);
+    db_target_link (tgts [nph-1]->id, tgts [0]->id);
 }
 
 
@@ -104,8 +107,8 @@ void build_reactions (int nph, int b, bool preload, unsigned old_cost, int old_l
 	    }
 
 	  // Check our current reaction against db ... we don't need to follow it thru if it already handled completely.
-	  if (!db_is_reaction_finished (tgts [i]->id, b, j))
-	    queue_insert (cost, tgts [i]->id, b, (uint8_t) j, delta);
+	  // if (!db_is_reaction_finished (tgts [i]->id, b, j))
+	  queue_insert (cost, tgts [i]->id, b, (uint8_t) j, delta);
 	}
     }
 }
@@ -149,19 +152,15 @@ void build_targets (int start, int nph)
 }
 
 
-static void dies_at (reaction *r, int i)
+static void dies_at (reaction *r, int i, result *res)
 
 {
-  db_reaction_finish (r, (ROWID)0, 0, 0, i, dbrt_dies);
-}
-
-
-static void explodes_at (reaction *r, int i)
-
-{
-  db_reaction_finish (r, (ROWID)0, 0, 0, i, dbrt_unfinished);
-printf ("FATAL: should no longer happen! [%llu, %d]\n!", r->rId, i);
-assert (0);
+  // db_reaction_finish (r, (ROWID)0, 0, 0, i, rt_dies);
+  res->result_tId = 0;
+  res->offX = 0;
+  res->offY = 0;
+  res->gen = 0;
+  res->type = rt_dies;
 }
 
 
@@ -173,218 +172,195 @@ static void emit (reaction *r, int gen, int offX, int offY, ROWID oId)
 }
 
 
-static bool fly_by (reaction *r, target *tgt, int i)
+static bool fly_by (reaction *r, target *tgt, int i, result *res)
 
 {
-  db_reaction_finish (r, (ROWID)0, 0, 0, i, dbrt_flyby);
+  // db_reaction_finish (r, (ROWID)0, 0, 0, i, rt_flyby);
+  // We don't store reflown fly-by's anymore. So what??
 
   if (SHIPMODE == 1 && r->lane + LANES < tgt_count_lanes (tgt, r->b))
     {
+      // refly with a new lane.
       r->lane += LANES;
-
       assert (r->lane <= UINT8_MAX);
       r->rId = 0;
-
-      return !db_is_reaction_finished (r->tId, r->b, r->lane);
+      return true;
     }
 
+  // not a reflyable fly-by ...
+  res->result_tId = 0;
+  res->offX = 0;
+  res->offY = 0;
+  res->gen = i;
+  res->type = rt_flyby;
   return false;
 }
 
 
-static void prune (reaction *r)
+static void prune (reaction *r, result *res)
 
 {
-  db_reaction_finish (r, (ROWID)0, 0, 0, 0, dbrt_pruned);
+  // db_reaction_finish (r, (ROWID)0, 0, 0, 0, rt_pruned);
+  res->result_tId = 0;
+  res->offX = 0;
+  res->offY = 0;
+  res->gen = 0;
+  res->type = rt_pruned;
 }
 
 
-static void stabilizes (reaction *r, target *old, int i, int p)
+static void stabilizes (reaction *r, target *old, int i, int p, result *res)
 
 {
   // The first nph generations of our lab [] starting with i contain the different phases of the resulting pattern
   // extract them as targets to tgts [] ...
   build_targets (i, p);
 
-  // Tho the pattern did stabilize it might still be to big for us to follow it further.
+  // Tho the pattern did stabilize it might still be too big for us to follow it further.
   // TO DO: CHECK for other prune-conditions here!
   if (W(tgts [0]) > PRUNE_SX || H(tgts [0]) > PRUNE_SY)
     {
-      prune (r);
-      free_targets ();
+      prune (r, res);
       return;
     }
 
   // check with our db, retrieve the ROW-ids if the targets existed or store them if they are new.
+  // _prof_leave ("handle()");
   reaction_targets_keep (p);
+  // _prof_enter ();
 
-  // remember our success in the db.
+  // remember our success
   target *new = tgts [0];
-  db_reaction_finish (r, new->id, new->left-old->left, new->top-old->top, i, dbrt_stable);
+  // db_reaction_finish (r, new->id, new->left-old->left, new->top-old->top, i, rt_stable);
+  res->result_tId = new->id;
+  res->offX = new->left-old->left;
+  res->offY = new->top-old->top;
+  res->gen = i;
+  res->type = rt_stable;
 
   // build all possible reactions for these targets, queue them for later analysis and check them against our db.
   build_reactions (p, r->b, false, r->cost, r->lane - tgt_adjust_lane (r->b, old, new));
-
-  // don't let them linger around any longer then they are needed!
-  free_targets ();
 }
 
 
-static void unstable (reaction *r, int i)
+static void unstable (reaction *r, int i, result *res)
 
 {
-  db_reaction_finish (r, (ROWID)0, 0, 0, i, dbrt_unfinished);
+  // db_reaction_finish (r, (ROWID)0, 0, 0, i, rt_unfinished);
+  res->result_tId = 0;
+  res->offX = 0;
+  res->offY = 0;
+  res->gen = i;
+  res->type = rt_unfinished;
 }
 
 
-static int search_ships (reaction *r, target *tgt, int gen)
+static int search_ships (reaction *r, target *tgt, int gen, result *res)
 
 {
-  found *f;
-  int i, n;
+  int i;
 
   // Search for escaping space ships
-  f = obj_search (gen, ships, &n);
-  if (!f)
+  emitted = obj_search (gen, ships, &n_emitted);
+  res->emits = (n_emitted >= 1);
+  if (!emitted)
     {
       // obj_search () found something we do NOT like to find. Discard this reaction!
-      db_reaction_emits (r->rId);
-      prune (r);
+      // db_reaction_emits (r->rId);
+      prune (r, res);
       return -1;
     }
-  if (n < 1)
+  if (n_emitted < 1)
     return gen;
 
-  // We know that at the current generation all objects in f have been around.
+  // We know that at the current generation all objects in emitted have been around.
   // Find the point in time where the last ship appeared and remove them all.
   gen = obj_back_trace ();
-
-  // Store the emitted ships
-  // TO DO: recalculate the offsets. They should be adjusted for the position of the orignal pattern.
-  //        f [i].offX/offY are absolute positions within lab [gen]
-  for (i = 0; i < n; i++)
-    emit (r, f [i].gen, f [i].offX-tgt->X, f [i].offY-tgt->Y, f [i].obj->id);
 
   return gen;
 }
 
 
-void handle (reaction *r)
+bool run (reaction *r, target *tgt, result *res)
 
 {
   int flyX, flyY, flyGen, i, p;
-  target tgt;
-  bool re_fly;
 
-assert (r);
-assert (!r->rId);
+  // Build new collision defined by our reaction -> lab [0], reinitializing lab, tgt and n_emitted
+  lab_init ();
+  tgt_collide (tgt, &bullets [r->b], r->lane, &flyX, &flyY, &flyGen);
+  n_emitted = 0;
+  res->emits = false;
 
-  // if we detect a fly-by condition we might want to immediately rerun the reaction on a higher lane ...
-  re_fly = false;
-  do
+  // Generate until MAXGEN or pattern stabilizes, or maybe until fly-by detected
+  for (i = 1; i <= MAXGEN+2; i++)
     {
-      // Maybe the collision has been queued more then once.
-      // And maybe *we* are not handling the cheapest of those.
-      // Since we are queueing reactions in order of least cost we are able to check this.
-      if (!db_reaction_keep (r))
-	return;
-
-      // Fetch our target from the datebase
-      // BUT: only if this is not a fly-by-rerun
-      if (!re_fly)
-	db_target_fetch (r, &tgt);
-
-      // reset the "fly by detected" flag.
-      re_fly = false;
-
-      // Build collision defined by our reaction -> lab [0]
-      lab_init ();
-      tgt_collide (&tgt, &bullets [r->b], r->lane, &flyX, &flyY, &flyGen);
-
-      // Generate until MAXGEN or pattern stabilizes, or maybe until fly-by detected
-      for (i = 1; i <= MAXGEN+2; i++)
+      if (!pat_generate (&lab [i-1], &lab [i]))
 	{
-	  if (!pat_generate (&lab [i-1], &lab [i]))
+	  dies_at (r, i, res);
+	  return false;
+	}
+
+      // Stabilized? Just check for P2 here, because that's cheap and anything P3 or beyond is too rare to bother.
+      if (i-2 >= 0 && pat_compare (&lab [i], &lab [i-2]))
+	{
+	  p = 2;
+	  if (pat_compare (&lab [i-1], &lab [i-2]))
+	    p = 1;
+
+	  stabilizes (r, tgt, i-2, p, res);
+	  return false;
+	}
+
+      // Fly-by detection 
+      if (i == flyGen && pat_match (&lab [flyGen], flyX, flyY, bullets [r->b].p))
+	{
+	  pat_remove (&lab [flyGen], flyX, flyY, bullets [r->b].p);
+
+	  // Synchronise reaction with the uncollided target
+	  while (flyGen % tgt->nph)
 	    {
-	      dies_at (r, i);
-	      free_target (&tgt);
-	      return;
-	    }
-
-	  // Stabilized? Just check for P2 here, because that's cheap and anything P3 or beyond is too rare to bother.
-	  if (i-2 >= 0 && pat_compare (&lab [i], &lab [i-2]))
-	    {
-	      p = 2;
-	      if (pat_compare (&lab [i-1], &lab [i-2]))
-		p = 1;
-
-	      stabilizes (r, &tgt, i-2, p);
-	      free_target (&tgt);
-	      return;
-	    }
-
-	  // Fly-by detection 
-	  if (i == flyGen && pat_match (&lab [flyGen], flyX, flyY, bullets [r->b].p))
-	    {
-	      pat_remove (&lab [flyGen], flyX, flyY, bullets [r->b].p);
-
-	      // Synchronise reaction with the uncollided target
-	      while (flyGen % tgt.nph)
+	      if (!pat_generate (&lab [flyGen], &lab [flyGen+1]))
 		{
-		  if (!pat_generate (&lab [flyGen], &lab [flyGen+1]))
-		    {
-		      dies_at (r, flyGen+1);
-		      free_target (&tgt);
-		      return;
-		    }
-
-		  flyGen++;
+		  dies_at (r, flyGen+1, res);
+		  return false;
 		}
 
-	      if (pat_match (&lab [flyGen], tgt.X, tgt.Y, tgt.pat))
-		{
-		  pat_remove (&lab [flyGen], tgt.X, tgt.Y, tgt.pat);
-		  if (W(&lab [flyGen]) <= 0)
-		    {
-		      if (!fly_by (r, &tgt, i))
-			{
-			  free_target (&tgt);
-			  return;
-			}
-
-		      // Here: we have a fly-by condition, and fly_by () has decided to let us rerun the reaction.
-		      // r is already updated to reflect this.
-		      re_fly = true;
-		      break;
-		    }
-		}
-
-	      // We did find the bullet where we would expect it if this were a fly-by.
-	      // But the remaining pattern after removal of that bullet did not match the original target.
-	      // So let's forget about it! (i.e.: take one step back, and suppress fly-by detection)
-	      i--;
-	      flyGen = -1;
+	      flyGen++;
 	    }
+
+	  if (pat_match (&lab [flyGen], tgt->X, tgt->Y, tgt->pat))
+	    {
+	      pat_remove (&lab [flyGen], tgt->X, tgt->Y, tgt->pat);
+	      if (W(&lab [flyGen]) <= 0)
+		{
+		  // Here: we have a fly-by condition
+		  // Let fly_by () decide if we should rerun the reaction on a new lane - fly_by () will adjust r->lane if
+		  // required.
+		  return fly_by (r, tgt, i, res);
+		}
+	    }
+
+	  // We did find the bullet where we would expect it if this were a fly-by.
+	  // But the remaining pattern after removal of that bullet did not match the original target.
+	  // So let's forget about it! (i.e.: take one step back, and suppress fly-by detection)
+	  i--;
+	  flyGen = -1;
 	}
     }
-  while (re_fly);
 
   // Maybe the reaction emitted a space ship?
   // We not only have to handle the emitted ship, but we also might have missed our pattern stabilizing some time ago.
-  i = search_ships (r, &tgt, MAXGEN+2);
+  i = search_ships (r, tgt, MAXGEN+2, res);
   if (i < 0)
-    {
-      free_target (&tgt);
-      return; // reaction was pruned.
-    }
+    return false; // reaction was pruned.
   for (; i < MAXGEN; i++)
     {
       pat_shrink_bbox (&lab [i]);
       if (!W(&lab [i]))
 	{
-	  dies_at (r, i);
-	  free_target (&tgt);
-	  return;
+	  dies_at (r, i, res);
+	  return false;
 	}
     }
   p = 1 + i - MAXGEN;
@@ -395,9 +371,8 @@ assert (!r->rId);
       // Well. It COULD die even now ... so what.
       if (!pat_generate (&lab [MAXGEN + p-1], &lab [MAXGEN + p]))
 	{
-	  dies_at (r, MAXGEN + p);
-	  free_target (&tgt);
-	  return;
+	  dies_at (r, MAXGEN + p, res);
+	  return false;
 	}
 
       // Check if lab [] repeats with delta = p
@@ -409,14 +384,56 @@ assert (!r->rId);
 	    if (!pat_compare (&lab [i-1], &lab [i-1+p]))
 	      break;
 
-	  stabilizes (r, &tgt, i, p);
-	  free_target (&tgt);
-	  return;
+	  stabilizes (r, tgt, i, p, res);
+	  return false;
 	}
     }
 
-  // Me didn't find nuffin'!
-  unstable (r, MAXGEN);
+  unstable (r, MAXGEN, res);
+  return false;
+}
+
+
+void handle (reaction *r)
+
+{
+  result res;
+  target tgt;
+  bool   re_fly;
+  int    i;
+
+assert (r);
+assert (!r->rId);
+
+  // if we detect a fly-by condition we might want to immediately rerun the reaction on a higher lane ...
+  tgt.id = 0;
+  do
+    {
+      // Maybe the collision has been queued more then once.
+      // And maybe *we* are not handling the cheapest of those.
+      // Since we are queueing reactions in order of least cost we are able to check this.
+      if (db_is_reaction_finished (r->tId, r->b, r->lane))
+	return;
+
+      // Fetch our target from the datebase - but only if we have to!
+      if (tgt.id != r->tId)
+	db_target_fetch (r, &tgt);
+
+      // _prof_enter ();
+      re_fly = run (r, &tgt, &res);
+      // _prof_leave ("handle()");
+    }
+  while (re_fly);
+
+  // Store our reaction, now that we know everything about it!
+  db_reaction_keep (r, &res);
+
+  // If we emitted any ships then store them.
+  // Note that we want *relative* postions for our DB!
+  for (i = 0; i < n_emitted; i++)
+    emit (r, emitted [i].gen, emitted [i].offX-tgt.X, emitted [i].offY-tgt.Y, emitted [i].obj->id);
+
+  // We don't need the current target any longer.
   free_target (&tgt);
 }
 

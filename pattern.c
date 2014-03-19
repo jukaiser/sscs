@@ -9,6 +9,7 @@
 
 #include "config.h"
 #include "pattern.h"
+#include "profile.h"
 
 
 #define ALLOC(t,arr,n)  {arr = (t *)calloc (n, sizeof (t)); if (!arr) {fprintf (stderr, "calloc () failed!\n"); exit (2);}}
@@ -209,6 +210,8 @@ bool pat_generate (pattern *p1, pattern *p2)
       return false;
     }
 
+  _prof_enter ();
+
   assert (p2->sizeY >= p1->sizeY);
   assert (p2->sizeX >= p1->sizeX);
 
@@ -282,6 +285,8 @@ bool pat_generate (pattern *p1, pattern *p2)
 
   // update bounding box
   pat_shrink_bbox (p2);
+
+  _prof_leave ("handle()");
 
 // we do not like touching the border ...
 assert (!(p2->top <= 3 || p2->left <= 3 || p2->bottom >= p2->sizeY - 3 - 1 || p2->right >= p2->sizeX - 3 - 1));

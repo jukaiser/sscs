@@ -108,7 +108,7 @@ pattern rephaser;
 int rephaser_X;
 pattern R1L0 [P_MAX];
 int R1L0_X [P_MAX];
-pattern result;
+pattern constructor;
 pattern trail;
 
 
@@ -125,7 +125,7 @@ static void load_tgt_bbox (target *t, ROWID tId, int offX, int offY)
 
 {
   char query [4096];
-  MYSQL_RES *result;
+  MYSQL_RES *res;
   MYSQL_ROW row;
   int width, height;
 
@@ -133,17 +133,17 @@ static void load_tgt_bbox (target *t, ROWID tId, int offX, int offY)
   if (mysql_query (con, query))
     finish_with_error (con);
 
-  result = mysql_store_result (con);
-  if (!result)
+  res = mysql_store_result (con);
+  if (!res)
     return;
 
-  row = mysql_fetch_row (result);
+  row = mysql_fetch_row (res);
   if (!row)
     return;
 
   width = strtoull (row [0], NULL, 0);
   height = strtoull (row [1], NULL, 0);
-  mysql_free_result (result);
+  mysql_free_result (res);
 
   t->top = offY;
   t->left = offX;
@@ -159,7 +159,7 @@ static void load_targets_ids (ROWID tId)
 
 {
   char query [4096];
-  MYSQL_RES *result;
+  MYSQL_RES *res;
   MYSQL_ROW row;
 
   // We already now one tId keep.
@@ -172,16 +172,16 @@ static void load_targets_ids (ROWID tId)
       if (mysql_query (con, query))
 	finish_with_error (con);
 
-      result = mysql_store_result (con);
-      if (!result)
+      res = mysql_store_result (con);
+      if (!res)
 	break;
 
-      row = mysql_fetch_row (result);
+      row = mysql_fetch_row (res);
       if (!row || !row [0])
 	break;
 
       tId = strtoull (row [0], NULL, 0);
-      mysql_free_result (result);
+      mysql_free_result (res);
 
       if (!tId || tId == tIds [0])
 	break;
@@ -210,7 +210,7 @@ static void load_bullet (bullet *b, ROWID bId)
 
 {
   char query [4096];
-  MYSQL_RES *result;
+  MYSQL_RES *res;
   MYSQL_ROW row;
 
   b->id = bId;
@@ -221,11 +221,11 @@ static void load_bullet (bullet *b, ROWID bId)
   if (mysql_query (con, query))
     finish_with_error (con);
 
-  result = mysql_store_result (con);
-  if (!result)
+  res = mysql_store_result (con);
+  if (!res)
     return;
 
-  row = mysql_fetch_row (result);
+  row = mysql_fetch_row (res);
   if (!row)
     return;
   b->oId = strtoull (row [0], NULL, 0);
@@ -249,7 +249,7 @@ static void load_bullet (bullet *b, ROWID bId)
   b->lanes_per_height = atoi (row [10]);
   b->lanes_per_width = atoi (row [11]);
   b->extra_lanes = atoi (row [12]);
-  mysql_free_result (result);
+  mysql_free_result (res);
 }
 
 
@@ -258,7 +258,7 @@ static ROWID parent_reaction_of (ROWID rId)
 
 {
   char query [4096];
-  MYSQL_RES *result;
+  MYSQL_RES *res;
   MYSQL_ROW row;
   ROWID ret = 0, i_tId, r_tId, tId;
   int   cost, new_lane;
@@ -268,18 +268,18 @@ static ROWID parent_reaction_of (ROWID rId)
   if (mysql_query (con, query))
     finish_with_error (con);
 
-  result = mysql_store_result (con);
-  if (!result)
+  res = mysql_store_result (con);
+  if (!res)
     return ret;
 
-  row = mysql_fetch_row (result);
+  row = mysql_fetch_row (res);
   if (!row)
     return ret;
 
   tId = strtoull (row [0], NULL, 0);
   new_lane = atoi (row [1]);
   cost = atoi (row [2]);
-  mysql_free_result (result);
+  mysql_free_result (res);
 
   load_targets_ids (tId);
 
@@ -305,11 +305,11 @@ static ROWID parent_reaction_of (ROWID rId)
   if (mysql_query (con, query))
     finish_with_error (con);
 
-  result = mysql_store_result (con);
-  if (!result)
+  res = mysql_store_result (con);
+  if (!res)
     return ret;
 
-  while (!ret && (row = mysql_fetch_row(result)))
+  while (!ret && (row = mysql_fetch_row(res)))
     {
       ROWID toChk = strtoull (row [0], NULL, 0);
       i_tId = strtoull (row [1], NULL, 0);
@@ -368,7 +368,7 @@ static ROWID parent_reaction_of (ROWID rId)
 	}
     }
 
-  mysql_free_result (result);
+  mysql_free_result (res);
 
   return ret;
 }
@@ -394,7 +394,7 @@ assert (MAXPERIOD <= P_MAX);
   MAXGEN = MAXPERIOD;
   MAX_RLE = 65536;
   lab_allocate (MAXWIDTH, MAXHEIGHT, MAXGEN, MAX_FIND);
-  pat_allocate (&result, PARTWIDTH, PART_DY*MAXPARTS+PARTHEIGHT);
+  pat_allocate (&constructor, PARTWIDTH, PART_DY*MAXPARTS+PARTHEIGHT);
 
   pat_from_string (TRAIL_RLE);
   pat_compact (&lab [0], &trail);
@@ -437,9 +437,9 @@ assert (MAXPERIOD <= P_MAX);
 	  continue;
 	}
 
-      pat_init (&result);
+      pat_init (&constructor);
       yPos = 0;
-      pat_copy (&result, xPos-R1L0_X [0], yPos, &R1L0 [0]);
+      pat_copy (&constructor, xPos-R1L0_X [0], yPos, &R1L0 [0]);
 //printf ("R1L0 [0]: %d = %d-%d\n", xPos-R1L0_X [0], xPos, R1L0_X [0]);
       yPos += PART_DY;
       --n_recipe;
@@ -453,27 +453,27 @@ assert (MAXPERIOD <= P_MAX);
 	  // printf ("#C FIRE 1RL0\n");
 	  for (j = 0; j < recipe [n_recipe].delta-1; j++)
 	    {
-	      pat_add (&result, xPos-rephaser_X, yPos, &rephaser);
+	      pat_add (&constructor, xPos-rephaser_X, yPos, &rephaser);
 // printf ("rephase: %d = %d-%d\n", xPos-rephaser_X, xPos, rephaser_X);
 	      yPos += PART_DY;
 	    }
 	  // TO DO: carry delay over to next part!
-	  pat_add (&result, xPos-R1L0_X [delay], yPos, &R1L0 [delay]);
+	  pat_add (&constructor, xPos-R1L0_X [delay], yPos, &R1L0 [delay]);
 // printf ("R1L0 [%d]: %d = %d-%d\n", j, xPos-R1L0_X [j], xPos, R1L0_X [j]);
 	  yPos += PART_DY;
 	  n_recipe--;
 	  printf ("#C FIRE 1RL0 [resulting reaction:%llu]\n", recipe [n_recipe].rId);
 	}
 
-      for (j = 0; j < 2000; j++)
+      for (j = 0; j < H(&constructor)/30; j++)
 	{
 	  int k;
 	  pat_dump (&trail, false);
 	  for (k = 0; k < 29; k++)
-	    printf ("..\n");
+	    printf (".\n");
 	}
-      pat_dump (&result, false);
+      pat_dump (&constructor, false);
       printf ("\n");
-      // printf ("x = %d, y = %d, rule = B3/S23\n%s\n", W(&result), H(&result), pat_rle (&result));
+      // printf ("x = %d, y = %d, rule = B3/S23\n%s\n", W(&constructor), H(&constructor), pat_rle (&constructor));
     }
 }

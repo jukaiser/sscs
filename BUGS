@@ -6,6 +6,13 @@ TODO:
 BUGS:
 	+ for targets with a period other then P1, P2 or P4 we have to RETHINK the
 	  pregap calculations in tgt_collide() or adapt recipe.c
+	  Three variants:
+		- adjust preagap for period of target (i.e.: rephase bullet or target)
+		- make tgt_collide () calculate the time saved and carry it thru the
+		  entire reaction including saving it to the db.
+		- Split pregap calculation off tgt_collide () and let recipe.c use
+		  this function.
+		- Don't use pulsars & Co., ever.
 
 FIXED:
 	+ Fly-by detection
@@ -14,6 +21,8 @@ FIXED:
 	  for emitted space ships
 	+ (hopefully) fixed a mayor bug with tgt_adjust_lane ()
 	  leading to completely wrong recipes :(
+	+ removed some abundant SELECTs (checking for finished reactions).
+	+ got rid of most UPDATE-Statements
 
 Features missing:
 	+ support for more then one rake type per project.

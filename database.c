@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <my_global.h>
 #include <mysql.h>
+#include <mysqld_error.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -12,17 +13,39 @@
 #include "pattern.h"
 #include "reaction.h"
 #include "database.h"
+#include "profile.h"
 
+
+#ifdef NO_PROFILING
+#define __dbg_query mysql_query
+#endif
 
 static MYSQL *con;
 
 static void finish_with_error(MYSQL *con)
 
 {
-  fprintf (stderr, "%s\n", mysql_error (con));
+  fprintf (stderr, "%u: %s\n", mysql_errno (con), mysql_error (con));
   mysql_close (con);
   exit (2);
 }
+
+
+#ifndef __dbg_query
+int __dbg_query(MYSQL *mysql, const char *q)
+
+{
+  int ret;
+  struct timespec t, t1, t2;
+  t.tv_sec = t.tv_nsec = 0;
+
+  _prof_enter ();
+  ret = mysql_query (mysql, q);
+  _prof_leave (q);
+
+  return ret;
+}
+#endif
 
 
 void db_init (void)
@@ -55,7 +78,7 @@ bool db_target_lookup (target *tgt, const char *rle)
   char query [4096];
   snprintf (query, 4095, SQL_F_SEARCH_TARGET, rle);
 
-  if (mysql_query (con, query))
+  if (__dbg_query (con, query))
     finish_with_error (con);
 
   MYSQL_RES *result = mysql_store_result (con);
@@ -76,14 +99,27 @@ bool db_target_lookup (target *tgt, const char *rle)
 }
 
 
-void db_target_store (target *tgt, const char *rle)
+void db_target_store (target *tgt, const char *rle, ROWID prev)
 
 {
   char query [4096];
-  snprintf (query, 4095, SQL_F_STORE_TARGET, rle, W(tgt->pat), H(tgt->pat), W(tgt), H(tgt), tgt->X-tgt->left, tgt->Y-tgt->top, tgt->nph);
+  snprintf (query, 4095, SQL_F_STORE_TARGET, rle, W(tgt->pat), H(tgt->pat), W(tgt), H(tgt), tgt->X-tgt->left, tgt->Y-tgt->top, tgt->nph, prev);
 
-  if (mysql_query (con, query))
-    finish_with_error (con);
+  if (__dbg_query (con, query))
+    {
+      if (mysql_errno (con) != ER_DUP_ENTRY)
+	finish_with_error (con);
+      else
+	{
+	  db_target_lookup (tgt, rle);
+	  return;
+	}
+    }
+  if (mysql_affected_rows (con) != 1)
+    {
+      db_target_lookup (tgt, rle);
+      return;
+    }
 
   tgt->id = mysql_insert_id(con);
 }
@@ -95,7 +131,7 @@ void db_target_link (ROWID curr, ROWID nxt)
   char query [4096];
   snprintf (query, 4095, SQL_F_LINK_TARGET,  nxt, curr);
 
-  if (mysql_query (con, query))
+  if (__dbg_query (con, query))
     finish_with_error (con);
 }
 
@@ -106,7 +142,7 @@ void db_bullet_load (const char *name, bullet *b)
   char query [4096];
   snprintf (query, 4095, SQL_F_BULLET, name);
 
-  if (mysql_query (con, query))
+  if (__dbg_query (con, query))
     finish_with_error (con);
 
   MYSQL_RES *result = mysql_store_result (con);
@@ -153,7 +189,7 @@ object *db_load_space_ships (void)
   object *ret;
   int i, n, j;
 
-  if (mysql_query (con, SQL_COUNT_SPACESHIPS))
+  if (__dbg_query (con, SQL_COUNT_SPACESHIPS))
     finish_with_error (con);
 
   MYSQL_RES *result = mysql_store_result (con);
@@ -181,7 +217,7 @@ object *db_load_space_ships (void)
       exit (2);
     }
 
-  if (mysql_query (con, SQL_SPACESHIPS))
+  if (__dbg_query (con, SQL_SPACESHIPS))
     finish_with_error (con);
 
   result = mysql_store_result (con);
@@ -271,7 +307,6 @@ assert (&ret [i] == (ret [i].base + ret [i].phase));
 
 
 bool db_is_reaction_finished (ROWID tId, unsigned b, unsigned lane)
-// TO DO: we should take a closer look at "exploding" and "unfinished" reactions. Maybe the context has change since the last run ...
 
 {
   char query [4096];
@@ -279,7 +314,7 @@ bool db_is_reaction_finished (ROWID tId, unsigned b, unsigned lane)
 
   snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, tId, bullets [b].id, lane);
 
-  if (mysql_query (con, query))
+  if (__dbg_query (con, query))
     finish_with_error (con);
 
   MYSQL_RES *result = mysql_store_result (con);
@@ -303,7 +338,7 @@ bool db_is_reaction_finished (ROWID tId, unsigned b, unsigned lane)
 }
 
 
-bool db_reaction_keep (reaction *r)
+bool db_reaction_keep (reaction *r, result *res)
 // sync the given reaction with our database.
 // return false if we do not need to handle it anymore.
 // TO DO: we should take a closer look at "exploding" and "unfinished" reactions. Maybe the context has change since the last run ...
@@ -311,10 +346,12 @@ bool db_reaction_keep (reaction *r)
 {
   char query [4096];
   bool ret;
+  char *t;
 
+#if 0
   snprintf (query, 4095, SQL_F_FETCH_REACTION, r->tId, bullets [r->b].id, r->lane);
 
-  if (mysql_query (con, query))
+  if (__dbg_query (con, query))
     finish_with_error (con);
 
   MYSQL_RES *result = mysql_store_result (con);
@@ -336,26 +373,65 @@ bool db_reaction_keep (reaction *r)
 
   if (r->rId)
     return ret;
+#endif
 
-  snprintf (query, 4095, SQL_F_STORE_REACTION, r->tId, bullets [r->b].id, r->lane);
+  switch (res->type)
+    {
+      case rt_undef:
+	t = "";
+	break;
+      case rt_dies:
+	t = "dies";
+	break;
+      case rt_flyby:
+	t = "fly-by";
+	break;
+      case rt_stable:
+	t = "stable";
+	break;
+      case rt_pruned:
+	t = "pruned";
+	break;
+      case rt_unfinished:
+	t = "unfinished";
+	break;
+    }
 
-  if (mysql_query (con, query))
-    finish_with_error (con);
+  snprintf (query, 4095, SQL_F_STORE_REACTION, r->tId, bullets [r->b].id, r->lane, res->result_tId, res->offX, res->offY, res->gen, t, r->cost, (res->emits?"true":"false"));
+
+  if (__dbg_query (con, query))
+    {
+      if (mysql_errno (con) != ER_DUP_ENTRY)
+	finish_with_error (con);
+      else
+	{
+	  r->rId = 0;
+	  return false;
+	}
+    }
+  if (mysql_affected_rows (con) != 1)
+    {
+      r->rId = 0;
+      return false;
+    }
 
   r->rId = mysql_insert_id(con);
-  return true;	// new reaction means: definetly not handled!
+  return true;	// new reaction
 }
 
 
 void db_reaction_emits (ROWID rId)
 
 {
+assert (0);
+#if 0
   char query [4096];
 
   snprintf (query, 4095, SQL_F_REACTION_EMITS, rId);
 
-  if (mysql_query (con, query))
+  if (__dbg_query (con, query))
     finish_with_error (con);
+#endif
 }
 
 
@@ -365,45 +441,50 @@ void  db_store_emit (ROWID rId, ROWID oId, int offX, int offY, int gen)
   char query [4096];
   snprintf (query, 4095, SQL_F_STORE_EMIT, rId, oId, offX, offY, gen);
 
-  if (mysql_query (con, query))
+  if (__dbg_query (con, query))
     finish_with_error (con);
 
+#if 0
   db_reaction_emits (rId);
+#endif
 }
 
 
-void db_reaction_finish (reaction *r, ROWID result_tId, int offX, int offY, int gen, db_reaction_type type)
+void db_reaction_finish (reaction *r, ROWID result_tId, int offX, int offY, int gen, reaction_type type)
 
 {
+assert (0);
+#if 0
   char query [4096];
   char *t;
 
   switch (type)
     {
-      case dbrt_undef:
+      case rt_undef:
 	t = "";
 	break;
-      case dbrt_dies:
+      case rt_dies:
 	t = "dies";
 	break;
-      case dbrt_flyby:
+      case rt_flyby:
 	t = "fly-by";
 	break;
-      case dbrt_stable:
+      case rt_stable:
 	t = "stable";
 	break;
-      case dbrt_pruned:
+      case rt_pruned:
 	t = "pruned";
 	break;
-      case dbrt_unfinished:
+      case rt_unfinished:
 	t = "unfinished";
 	break;
     }
 
   snprintf (query, 4095, SQL_F_FINISH_REACTION, result_tId, offX, offY, gen, t, r->cost, r->rId);
 
-  if (mysql_query (con, query))
+  if (__dbg_query (con, query))
     finish_with_error (con);
+#endif
 }
 
 
@@ -416,7 +497,7 @@ void db_target_fetch (reaction *r, target *t)
   assert (r);
   snprintf (query, 4095, SQL_F_FETCH_TARGET, r->tId);
 
-  if (mysql_query (con, query))
+  if (__dbg_query (con, query))
     finish_with_error (con);
 
   MYSQL_RES *result = mysql_store_result (con);

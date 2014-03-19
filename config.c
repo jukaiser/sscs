@@ -47,14 +47,17 @@ char *SQL_F_FETCH_TARGET = "SELECT rle, period, combined_width, combined_height,
 char *SQL_F_SEARCH_TARGET = "SELECT tId FROM target WHERE rle = '%s'";
 char *SQL_F_STORE_TARGET =
 	"INSERT INTO target (tId, rle, width, height, combined_width, combined_height, offX, offY, period, next_tId) "
-		"VALUES (NULL, '%s', %d, %d, %d, %d, %d, %d, %d, NULL)";
+		"VALUES (NULL, '%s', %d, %d, %d, %d, %d, %d, %d, %llu)";
 char *SQL_F_LINK_TARGET = "UPDATE target SET next_tId = %llu WHERE tId = %llu";
 char *SQL_F_FETCH_REACTION = "SELECT rId, result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %u";
 char *SQL_F_IS_FINISHED_REACTION = "SELECT result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %u";
-char *SQL_F_STORE_REACTION = "INSERT INTO reaction (rId, initial_tId, bId, lane) VALUES (NULL, %llu, %llu, %u)";
-char *SQL_F_REACTION_EMITS = "UPDATE reaction SET emits_ships = 'true' WHERE rId = %llu";
-char *SQL_F_FINISH_REACTION = "UPDATE reaction SET result_tId = %llu, offX = %d, offY = %d, gen = %d, result = '%s', cost = %u WHERE rId = %llu";
-char *SQL_F_STORE_EMIT = "INSERT INTO emitted (eId, rId, oId, offX, offY, gen) VALUES (NULL, %llu, %llu, %d, %d, %d)";
+char *SQL_F_STORE_REACTION =
+	"INSERT INTO reaction (rId, initial_tId, bId, lane, result_tId, offX, offY, gen, result, cost, emits_ships) "
+		"VALUES (NULL, %llu, %llu, %u, %llu, %d, %d, %u, '%s', %u, '%s')";
+// char *SQL_F_STORE_REACTION = "INSERT INTO reaction (rId, initial_tId, bId, lane) VALUES (NULL, %llu, %llu, %u)";
+// char *SQL_F_REACTION_EMITS = "UPDATE reaction SET emits_ships = 'true' WHERE rId = %llu";
+// char *SQL_F_FINISH_REACTION = "UPDATE reaction SET result_tId = %llu, offX = %d, offY = %d, gen = %d, result = '%s', cost = %u WHERE rId = %llu";
+char *SQL_F_STORE_EMIT = "INSERT DELAYED INTO emitted (eId, rId, oId, offX, offY, gen) VALUES (NULL, %llu, %llu, %d, %d, %d)";
 char *SQL_COUNT_SPACESHIPS = "SELECT COUNT(*) FROM objects WHERE dx <> 0 OR dy <> 0";
 char *SQL_SPACESHIPS = "SELECT oId, rle, name, dx, dy, dt, phase, offX, offY FROM objects WHERE dx <> 0 OR dy <> 0 ORDER BY name, phase";
 
@@ -109,8 +112,8 @@ static cfg_var config [] =
     {"SQL_F_FETCH_REACTION", STRING, &SQL_F_FETCH_REACTION},
     {"SQL_F_IS_FINISHED_REACTION", STRING, &SQL_F_IS_FINISHED_REACTION},
     {"SQL_F_STORE_REACTION", STRING, &SQL_F_STORE_REACTION},
-    {"SQL_F_REACTION_EMITS", STRING, &SQL_F_REACTION_EMITS},
-    {"SQL_F_FINISH_REACTION", STRING, &SQL_F_FINISH_REACTION},
+    // {"SQL_F_REACTION_EMITS", STRING, &SQL_F_REACTION_EMITS},
+    // {"SQL_F_FINISH_REACTION", STRING, &SQL_F_FINISH_REACTION},
     {"SQL_F_STORE_EMIT", STRING, &SQL_F_STORE_EMIT},
     {"SQL_COUNT_SPACESHIPS", STRING, &SQL_COUNT_SPACESHIPS},
     {"SQL_SPACESHIPS",  STRING, &SQL_SPACESHIPS},
