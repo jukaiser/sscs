@@ -156,10 +156,6 @@ static void dies_at (reaction *r, int i, result *res)
 
 {
   // db_reaction_finish (r, (ROWID)0, 0, 0, i, rt_dies);
-  res->result_tId = 0;
-  res->offX = 0;
-  res->offY = 0;
-  res->gen = 0;
   res->type = rt_dies;
 }
 
@@ -176,10 +172,15 @@ static bool fly_by (reaction *r, target *tgt, int i, result *res)
 
 {
   // db_reaction_finish (r, (ROWID)0, 0, 0, i, rt_flyby);
-  // We don't store reflown fly-by's anymore. So what??
+  res->gen = i;
+  res->type = rt_flyby;
+
 
   if (SHIPMODE == 1 && r->lane + LANES < tgt_count_lanes (tgt, r->b))
     {
+      // Keep old reaction so we can check for "we have ssen this before".
+      db_reaction_keep (r, res);
+
       // refly with a new lane.
       r->lane += LANES;
       assert (r->lane <= UINT8_MAX);
@@ -188,11 +189,6 @@ static bool fly_by (reaction *r, target *tgt, int i, result *res)
     }
 
   // not a reflyable fly-by ...
-  res->result_tId = 0;
-  res->offX = 0;
-  res->offY = 0;
-  res->gen = i;
-  res->type = rt_flyby;
   return false;
 }
 
@@ -201,10 +197,6 @@ static void prune (reaction *r, result *res)
 
 {
   // db_reaction_finish (r, (ROWID)0, 0, 0, 0, rt_pruned);
-  res->result_tId = 0;
-  res->offX = 0;
-  res->offY = 0;
-  res->gen = 0;
   res->type = rt_pruned;
 }
 
@@ -221,6 +213,7 @@ static void stabilizes (reaction *r, target *old, int i, int p, result *res)
   if (W(tgts [0]) > PRUNE_SX || H(tgts [0]) > PRUNE_SY)
     {
       prune (r, res);
+      free_targets ();
       return;
     }
 
@@ -240,6 +233,7 @@ static void stabilizes (reaction *r, target *old, int i, int p, result *res)
 
   // build all possible reactions for these targets, queue them for later analysis and check them against our db.
   build_reactions (p, r->b, false, r->cost, r->lane - tgt_adjust_lane (r->b, old, new));
+  free_targets ();
 }
 
 
@@ -247,9 +241,6 @@ static void unstable (reaction *r, int i, result *res)
 
 {
   // db_reaction_finish (r, (ROWID)0, 0, 0, i, rt_unfinished);
-  res->result_tId = 0;
-  res->offX = 0;
-  res->offY = 0;
   res->gen = i;
   res->type = rt_unfinished;
 }
@@ -397,28 +388,28 @@ bool run (reaction *r, target *tgt, result *res)
 void handle (reaction *r)
 
 {
-  result res;
+  result res = {0ULL, 0, 0, 0, false, rt_undef};
   target tgt;
-  bool   re_fly;
+  bool   re_fly = false;
   int    i;
 
 assert (r);
 assert (!r->rId);
 
+  // Maybe the collision has been queued more then once.
+  // And maybe *we* are not handling the cheapest of those.
+  // Since we are queueing reactions in order of least cost we are able to check this.
+  // NOTE: since "re-flying" is handled immediately, we only have to check this for the very
+  //	   first pass.
+  if (db_is_reaction_finished (r->tId, r->b, r->lane))
+    return;
+
+  // Fetch our target from the datebase.
+  db_target_fetch (r, &tgt);
+
   // if we detect a fly-by condition we might want to immediately rerun the reaction on a higher lane ...
-  tgt.id = 0;
   do
     {
-      // Maybe the collision has been queued more then once.
-      // And maybe *we* are not handling the cheapest of those.
-      // Since we are queueing reactions in order of least cost we are able to check this.
-      if (db_is_reaction_finished (r->tId, r->b, r->lane))
-	return;
-
-      // Fetch our target from the datebase - but only if we have to!
-      if (tgt.id != r->tId)
-	db_target_fetch (r, &tgt);
-
       // _prof_enter ();
       re_fly = run (r, &tgt, &res);
       // _prof_leave ("handle()");

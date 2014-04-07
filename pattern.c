@@ -1027,6 +1027,7 @@ void tgt_center (target *tgt)
 
 void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int *fly_y, int *fly_dt)
 // TO DO: chk 4 overflow!!
+// TO DO: the recipe generator needs to know about our precap elimnation process.
 
 {
   int x, y, dx, dy, dt;
@@ -1039,8 +1040,7 @@ void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int 
   assert (b->p->top == 0 && b->p->left == 0);
   assert (tgt->pat->top == 0 && tgt->pat->left == 0);
 
-  // TO elim this??
-  pat_fill (&lab [0], DEAD);
+  pat_fill (&lab [0], DEAD); // TO elim this??
   pat_copy  (&lab [0], tgt->X, tgt->Y, tgt->pat);
 
   // Find out where to place the bullet.
@@ -1078,21 +1078,21 @@ void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int 
     }
   else if (b->lane_dx == 0 && b->lane_dy > 0 && dy > 3 && b->dy < 0)
     {
-      fprintf (stderr, "Warning: bullets with lane_dy < 0 untested. YMMV!\n");
+      fprintf (stderr, "Warning: bullets with lane_dy > 0 untested. YMMV!\n");
       dy /= -b->dy;
       x += (dy-3) * b->dx;
       y += (dy-3) * b->dy;
     }
   else if (b->lane_dy == 0 && b->lane_dx < 0 && dx > 3 && b->dx > 0)
     {
-      fprintf (stderr, "Warning: bullets with lane_dx > 0 untested. YMMV!\n");
+      fprintf (stderr, "Warning: bullets with lane_dx < 0 untested. YMMV!\n");
       dx /= b->dx;
       x += (dx-3) * b->dx;
       y += (dx-3) * b->dy;
     }
   else if (b->lane_dy == 0 && b->lane_dx > 0 && dx > 3 && b->dx < 0)
     {
-      fprintf (stderr, "Warning: bullets with lane_dx < 0 untested. YMMV!\n");
+      fprintf (stderr, "Warning: bullets with lane_dx > 0 untested. YMMV!\n");
       dx /= -b->dx;
       x += (dx-3) * b->dx;
       y += (dx-3) * b->dy;
@@ -1112,14 +1112,16 @@ void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int 
       dx = tgt->right + 3 - x;
       dx = (dx + b->dx-1) / b->dx;
       if (dx <= 0) { fprintf (stderr, "Internal error pat_collide(b->dx>0) -> fly-by-dx <= 0!\n"); exit (3); }
-      dt = dx*b->dt;
+      if (dt >= dx*b->dt)
+	dt = dx*b->dt;
     }
   else if (b->dx < 0)
     {
       dx = x + b->p->right + 3 - tgt->left;
       dx = (dx + b->dx-1) / b->dx;
       if (dx <= 0) { fprintf (stderr, "Internal error pat_collide(b->dx<0) -> fly-by-dx <= 0!\n"); exit (3); }
-      dt = dx*b->dt;
+      if (dt >= dx*b->dt)
+	dt = dx*b->dt;
     }
   if (b->dy > 0)
     {
