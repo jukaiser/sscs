@@ -1191,3 +1191,25 @@ int tgt_adjust_lane (int _b, target *old, target *new)
 	return -(new->bottom - old->bottom)*b->lanes_per_height - (new->right - old->right)*b->lanes_per_width;
     }
 }
+
+
+uint32_t pat_GSF_hash (pattern *pat)
+// Borrowed from Golly, see http://www.conwaylife.com/forums/viewtopic.php?f=9&t=1296&start=50
+
+{
+    // calculate a hash value for pattern in given rect
+    uint32_t hash = 31415962U;
+    uint32_t cx, cy;
+   
+    for (cy = pat->top; cy <= pat->bottom; cy++) {
+        for (cx = pat->left; cx <= pat->right; cx++) {
+            if (pat->cell [cy][cx] != ALIVE)
+		continue;
+
+	    hash = (hash * 1000003U) ^ (cy - pat->top);
+	    hash = (hash * 1000003U) ^ (cx - pat->left);
+        }
+    }
+   
+    return hash;
+}
