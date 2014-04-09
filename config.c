@@ -21,7 +21,7 @@ int  nSHIP_DIRS   = 0;
 int   MAXGEN	  = 256;
 int   MAXPERIOD   = 2;
 int   MAX_RLE	  = 4096;
-char *BULLET	  = "glider_se_31_lanes";
+char *SHIPNAME	  = "maship";
 char *START	  = "start-targets.pat";
 int   MAX_FIND	  = 100;
 bool  SHIPMODE    = true;
@@ -31,24 +31,17 @@ int   DT	  = 240;
 int   FACTOR	  = 1;
 int   LANES	  = 31;
 bool  RELATIVE    = true;
-int  *COSTS	  = NULL;
-int  nCOSTS	  = 0;
 int   MAXDELTA	  = 31;
 char *DBHOST	  = "localhost";
 int   DBPORT	  = 3306;
 char *DBNAME	  = "gol";
 char *DBUSER	  = "gol";
 char *DBPASSWD    = "";
-// char *SQL_F_BULLET = "SELECT bId, oId, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes FROM bullets WHERE name = '%s'";
-char *SQL_F_BULLET =
-	"SELECT bId, b.oId, rle, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes "
-		"FROM bullets b LEFT JOIN objects USING (oId) WHERE b.name = '%s'";
 char *SQL_F_FETCH_TARGET = "SELECT rle, period, combined_width, combined_height, offX, offY FROM target WHERE tId = %llu";
 char *SQL_F_SEARCH_TARGET = "SELECT tId FROM target WHERE rle = '%s'";
 char *SQL_F_STORE_TARGET =
 	"INSERT INTO target (tId, rle, width, height, combined_width, combined_height, offX, offY, period, next_tId) "
 		"VALUES (NULL, '%s', %d, %d, %d, %d, %d, %d, %d, %llu)";
-char *SQL_F_LINK_TARGET = "UPDATE target SET next_tId = %llu WHERE tId = %llu";
 char *SQL_F_FETCH_REACTION = "SELECT rId, result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %u";
 char *SQL_F_IS_FINISHED_REACTION = "SELECT result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %u";
 char *SQL_F_STORE_REACTION =
@@ -58,8 +51,14 @@ char *SQL_F_STORE_REACTION =
 // char *SQL_F_REACTION_EMITS = "UPDATE reaction SET emits_ships = 'true' WHERE rId = %llu";
 // char *SQL_F_FINISH_REACTION = "UPDATE reaction SET result_tId = %llu, offX = %d, offY = %d, gen = %d, result = '%s', cost = %u WHERE rId = %llu";
 char *SQL_F_STORE_EMIT = "INSERT DELAYED INTO emitted (eId, rId, oId, offX, offY, gen) VALUES (NULL, %llu, %llu, %d, %d, %d)";
-char *SQL_COUNT_SPACESHIPS = "SELECT COUNT(*) FROM objects WHERE dx <> 0 OR dy <> 0";
-char *SQL_SPACESHIPS = "SELECT oId, rle, name, dx, dy, dt, phase, offX, offY FROM objects WHERE dx <> 0 OR dy <> 0 ORDER BY name, phase";
+char *SQL_COUNT_SPACESHIPS = "SELECT COUNT(*) FROM object WHERE dx <> 0 OR dy <> 0";
+char *SQL_F_SPACESHIPS = "SELECT oId, rle, name, dx, dy, dt, phase, offX, offY FROM object WHERE dx <> 0 OR dy <> 0 ORDER BY name, phase";
+char *SQL_COUNT_BULLETS = "SELECT COUNT(DISTINCT bId) FROM part WHERE ship_name = '%s'";
+char *SQL_F_BULLETS =
+	"SELECT b.bId, b.oId, rle, dx, dy, dt, base_x, base_y, reference, lane_dx, lane_dy, lanes_per_height, lanes_per_width, extra_lanes "
+		"FROM bullet b LEFT JOIN object USING (oId) WHERE b.bId IN (SELECT bId FROM part WHERE ship_name = '%s')";
+char *SQL_COUNT_PARTS = "SELECT COUNT(*) FROM part WHERE ship_name = '%s'";
+char *SQL_F_PARTS = "SELECT pId, part_name, type, lane_adjust, bId, lane_fired, cost FROM part WHERE ship_name = '%s'";
 
 
 // <- config.h
@@ -75,48 +74,47 @@ typedef struct
 
 static cfg_var config [] =
   {
-    {"PATH",		STRING,  &PATH},
-    {"F_TEMPFILES",	STRING,  &F_TEMPFILES},
-    {"SAVEFILE",	STRING,  &SAVEFILE},
-    {"MAXCOST",		NUM,     &MAXCOST},
-    {"MAXWIDTH",	NUM,     &MAXWIDTH},
-    {"MAXHEIGHT",	NUM,     &MAXHEIGHT},
-    {"PRUNE_SX",	NUM,	 &PRUNE_SX},
-    {"PRUNE_SY",	NUM,	 &PRUNE_SY},
-    {"SHIP_DIRS",	N_ARRAY, &SHIP_DIRS, &nSHIP_DIRS},
-    {"MAXGEN",		NUM,     &MAXGEN},
-    {"MAXPERIOD",	NUM,     &MAXPERIOD},
-    {"MAX_RLE",		NUM,     &MAX_RLE},
-    {"BULLET",		STRING,  &BULLET},
-    {"START",		STRING,  &START},
-    {"MAX_FIND",	NUM,     &MAX_FIND},
-    {"SHIPMODE",	BOOL,    &SHIPMODE},
-    {"DX",		NUM,     &DX},
-    {"DY",		NUM,     &DY},
-    {"DT",		NUM,     &DT},
-    {"FACTOR",		NUM,     &FACTOR},
-    {"LANES",		NUM,     &LANES},
-    {"RELATIVE",	BOOL,    &RELATIVE},
-    {"COSTS",		N_ARRAY, &COSTS, &nCOSTS},
-    {"MAXDELTA",	NUM,     &MAXDELTA},
-    {"DBHOST",		STRING,  &DBHOST},
-    {"DBPORT",		NUM,     &DBPORT},
-    {"DBNAME",		STRING,  &DBNAME},
-    {"DBUSER",		STRING,  &DBUSER},
-    {"DBPASSWD",	STRING,  &DBPASSWD},
-    {"SQL_F_BULLET",	STRING,	 &SQL_F_BULLET},
-    {"SQL_F_FETCH_TARGET", STRING, &SQL_F_FETCH_TARGET},
-    {"SQL_F_SEARCH_TARGET", STRING, &SQL_F_SEARCH_TARGET},
-    {"SQL_F_STORE_TARGET", STRING, &SQL_F_STORE_TARGET},
-    {"SQL_F_LINK_TARGET", STRING, &SQL_F_LINK_TARGET},
-    {"SQL_F_FETCH_REACTION", STRING, &SQL_F_FETCH_REACTION},
-    {"SQL_F_IS_FINISHED_REACTION", STRING, &SQL_F_IS_FINISHED_REACTION},
-    {"SQL_F_STORE_REACTION", STRING, &SQL_F_STORE_REACTION},
-    // {"SQL_F_REACTION_EMITS", STRING, &SQL_F_REACTION_EMITS},
-    // {"SQL_F_FINISH_REACTION", STRING, &SQL_F_FINISH_REACTION},
-    {"SQL_F_STORE_EMIT", STRING, &SQL_F_STORE_EMIT},
-    {"SQL_COUNT_SPACESHIPS", STRING, &SQL_COUNT_SPACESHIPS},
-    {"SQL_SPACESHIPS",  STRING, &SQL_SPACESHIPS},
+    {"PATH",			   STRING,  &PATH},
+    {"F_TEMPFILES",		   STRING,  &F_TEMPFILES},
+    {"SAVEFILE",		   STRING,  &SAVEFILE},
+    {"MAXCOST",			   NUM,     &MAXCOST},
+    {"MAXWIDTH",		   NUM,     &MAXWIDTH},
+    {"MAXHEIGHT",		   NUM,     &MAXHEIGHT},
+    {"PRUNE_SX",		   NUM,     &PRUNE_SX},
+    {"PRUNE_SY",		   NUM,     &PRUNE_SY},
+    {"SHIP_DIRS",		   N_ARRAY, &SHIP_DIRS, &nSHIP_DIRS},
+    {"MAXGEN",			   NUM,     &MAXGEN},
+    {"MAXPERIOD",		   NUM,     &MAXPERIOD},
+    {"MAX_RLE",			   NUM,     &MAX_RLE},
+    {"SHIPNAME",		   STRING,  &SHIPNAME},
+    {"START",			   STRING,  &START},
+    {"MAX_FIND",		   NUM,     &MAX_FIND},
+    {"SHIPMODE",		   BOOL,    &SHIPMODE},
+    {"DX",			   NUM,     &DX},
+    {"DY",			   NUM,     &DY},
+    {"DT",			   NUM,     &DT},
+    {"FACTOR",			   NUM,     &FACTOR},
+    {"LANES",			   NUM,     &LANES},
+    {"RELATIVE",		   BOOL,    &RELATIVE},
+    {"MAXDELTA",		   NUM,     &MAXDELTA},
+    {"DBHOST",			   STRING,  &DBHOST},
+    {"DBPORT",			   NUM,     &DBPORT},
+    {"DBNAME",			   STRING,  &DBNAME},
+    {"DBUSER",			   STRING,  &DBUSER},
+    {"DBPASSWD",		   STRING,  &DBPASSWD},
+    {"SQL_F_FETCH_TARGET",	   STRING,  &SQL_F_FETCH_TARGET},
+    {"SQL_F_SEARCH_TARGET",	   STRING,  &SQL_F_SEARCH_TARGET},
+    {"SQL_F_STORE_TARGET",	   STRING,  &SQL_F_STORE_TARGET},
+    {"SQL_F_FETCH_REACTION",	   STRING,  &SQL_F_FETCH_REACTION},
+    {"SQL_F_IS_FINISHED_REACTION", STRING,  &SQL_F_IS_FINISHED_REACTION},
+    {"SQL_F_STORE_REACTION",	   STRING,  &SQL_F_STORE_REACTION},
+    {"SQL_F_STORE_EMIT",	   STRING,  &SQL_F_STORE_EMIT},
+    {"SQL_COUNT_SPACESHIPS",	   STRING,  &SQL_COUNT_SPACESHIPS},
+    {"SQL_F_SPACESHIPS",	   STRING,  &SQL_F_SPACESHIPS},
+    {"SQL_COUNT_BULLETS",	   STRING,  &SQL_COUNT_BULLETS},
+    {"SQL_F_BULLETS",		   STRING,  &SQL_F_BULLETS},
+    {"SQL_COUNT_PARTS",		   STRING,  &SQL_COUNT_PARTS},
+    {"SQL_F_PARTS",		   STRING,  &SQL_F_PARTS},
     {NULL}
   };
 

@@ -128,19 +128,18 @@ void db_target_store (target *tgt, const char *rle, ROWID prev)
 void db_target_link (ROWID curr, ROWID nxt)
 
 {
-  char query [4096];
-  snprintf (query, 4095, SQL_F_LINK_TARGET,  nxt, curr);
-
-  if (__dbg_query (con, query))
-    finish_with_error (con);
+assert (0); // KILL IT WITH FIRE
 }
 
 
-void db_bullet_load (const char *name, bullet *b)
+bullet *db_load_bullets_for (const char *shipname)
 
 {
+  bullet *ret;
   char query [4096];
-  snprintf (query, 4095, SQL_F_BULLET, name);
+  int n, i;
+
+  snprintf (query, 4095, SQL_COUNT_BULLETS, shipname);
 
   if (__dbg_query (con, query))
     finish_with_error (con);
@@ -149,36 +148,170 @@ void db_bullet_load (const char *name, bullet *b)
 
   if (!result)
     {
-      fprintf (stderr, "db error: no bullet foun. query='%s'\n", query);
+      fprintf (stderr, "No bullets found for '%s'\n", shipname);
       exit (2);
     }
 
   MYSQL_ROW row = mysql_fetch_row (result);
-  b->id = strtoull (row [0], NULL, 0);
-  b->name = strdup (name); if (!b->name) { perror ("db_bullet_load - strdup"); exit (2); }
-  b->oId = strtoull (row [1], NULL, 0);
-  pat_from_string (row [2]);
-  b->p = pat_compact (&lab [0], NULL);
-  b->dx = atoi (row [3]);
-  b->dy = atoi (row [4]);
-  b->dt = atoi (row [5]);
-  b->base_x = atoi (row [6]);
-  b->base_y = atoi (row [7]);
-  if (strcmp (row [8], "TOPLEFT") == 0)
-    b->reference = topleft;
-  else if (strcmp (row [8], "TOPRIGHT") == 0)
-    b->reference = topright;
-  else if (strcmp (row [8], "BOTTOMLEFT") == 0)
-    b->reference = bottomleft;
-  else if (strcmp (row [8], "BOTTOMRIGHT") == 0)
-    b->reference = bottomright;
-  b->lane_dx = atoi (row [9]);
-  b->lane_dy = atoi (row [10]);
-  b->lanes_per_height = atoi (row [11]);
-  b->lanes_per_width = atoi (row [12]);
-  b->extra_lanes = atoi (row [13]);
+  n = strtoull (row [0], NULL, 0);
+  mysql_free_result (result);
+
+  if (n < 1)
+    {
+      fprintf (stderr, "No bullets found for '%s'\n", shipname);
+      exit (2);
+    }
+
+  ret = calloc (n+1, sizeof (bullet));
+  if (!ret)
+    {
+      perror ("db_load_bullets_for - calloc");
+      exit (2);
+    }
+
+  snprintf (query, 4095, SQL_F_BULLETS, shipname);
+  if (__dbg_query (con, query))
+    finish_with_error (con);
+
+  result = mysql_store_result (con);
+
+  if (!result)
+    {
+      fprintf (stderr, "No bullets found for '%s'\n", shipname);
+      exit (2);
+    }
+
+  for (i = 0; i < n; i++)
+    {
+      row = mysql_fetch_row (result);
+
+      if (!row)
+	{
+	  fprintf (stderr, "Please check database! SQL_COUNT_BULLETS ./. SQL_F_BULLETS?");
+	  exit (2);
+	}
+
+      ret [i].id = strtoull (row [0], NULL, 0);
+      ret [i].oId = strtoull (row [1], NULL, 0);
+      pat_from_string (row [2]);
+      ret [i].p = pat_compact (&lab [0], NULL);
+      ret [i].dx = atoi (row [3]);
+      ret [i].dy = atoi (row [4]);
+      ret [i].dt = atoi (row [5]);
+      ret [i].base_x = atoi (row [6]);
+      ret [i].base_y = atoi (row [7]);
+      if (strcmp (row [8], "TOPLEFT") == 0)
+	ret [i].reference = topleft;
+      else if (strcmp (row [8], "TOPRIGHT") == 0)
+	ret [i].reference = topright;
+      else if (strcmp (row [8], "BOTTOMLEFT") == 0)
+	ret [i].reference = bottomleft;
+      else if (strcmp (row [8], "BOTTOMRIGHT") == 0)
+	ret [i].reference = bottomright;
+      ret [i].lane_dx = atoi (row [9]);
+      ret [i].lane_dy = atoi (row [10]);
+      ret [i].lanes_per_height = atoi (row [11]);
+      ret [i].lanes_per_width = atoi (row [12]);
+      ret [i].extra_lanes = atoi (row [13]);
+    }
+
+
+  ret [n].id = 0;
+  ret [n].oId = 0;
+  ret [n].p = NULL;
 
   mysql_free_result (result);
+
+  return ret;
+}
+
+
+part *db_load_parts_for (const char *shipname)
+// Load the parts we could use for the given SHIP.
+
+{
+  part *ret;
+  char query [4096];
+  int n, i;
+
+  snprintf (query, 4095, SQL_COUNT_PARTS, shipname);
+
+  if (__dbg_query (con, query))
+    finish_with_error (con);
+
+  MYSQL_RES *result = mysql_store_result (con);
+
+  if (!result)
+    {
+      fprintf (stderr, "No parts found for '%s'\n", shipname);
+      exit (2);
+    }
+
+  MYSQL_ROW row = mysql_fetch_row (result);
+  n = strtoull (row [0], NULL, 0);
+  mysql_free_result (result);
+
+  if (n < 1)
+    {
+      fprintf (stderr, "No parts found for '%s'\n", shipname);
+      exit (2);
+    }
+
+  ret = calloc (n+1, sizeof (part));
+  if (!ret)
+    {
+      perror ("db_load_parts_for - calloc");
+      exit (2);
+    }
+
+  snprintf (query, 4095, SQL_F_PARTS, shipname);
+  if (__dbg_query (con, query))
+    finish_with_error (con);
+
+  result = mysql_store_result (con);
+
+  if (!result)
+    {
+      fprintf (stderr, "No parts found for '%s'\n", shipname);
+      exit (2);
+    }
+
+  for (i = 0; i < n; i++)
+    {
+      row = mysql_fetch_row (result);
+
+      if (!row)
+	{
+	  fprintf (stderr, "Please check database! SQL_COUNT_PARTS ./. SQL_F_PARTS?");
+	  exit (2);
+	}
+
+      ret [i].pId = strtoull (row [0], NULL, 0);
+      ret [i].name = strdup (row [1]); if (!ret [i].name) { perror ("db_load_space_ships - strdup"); exit (2); }
+      if (strcmp (row [2], "track") == 0)
+	ret [i].type = pt_track;
+      else if (strcmp (row [2], "rephaser") == 0)
+	ret [i].type = pt_rephaser;
+      else if (strcmp (row [2], "rake") == 0)
+	ret [i].type = pt_rake;
+      ret [i].lane_adjust = atoi (row [3]);
+      if (ret [i].type == pt_rake)
+	{
+	  ret [i].b = bullet_index (atoi (row [4]));
+	  ret [i].lane_fired = atoi (row [5]);
+	}
+      else
+	ret [i].b = -1;
+      ret [i].cost = atoi (row [6]);
+    }
+
+
+  ret [n].pId = 0;
+  ret [n].name = NULL;
+
+  mysql_free_result (result);
+
+  return ret;
 }
 
 
@@ -217,14 +350,14 @@ object *db_load_space_ships (void)
       exit (2);
     }
 
-  if (__dbg_query (con, SQL_SPACESHIPS))
+  if (__dbg_query (con, SQL_F_SPACESHIPS))
     finish_with_error (con);
 
   result = mysql_store_result (con);
 
   if (!result)
     {
-      fprintf (stderr, "Please check database! No ships found with SQL_SPACESHIPS?");
+      fprintf (stderr, "Please check database! No ships found with SQL_F_SPACESHIPS?");
       exit (2);
     }
 
@@ -347,33 +480,6 @@ bool db_reaction_keep (reaction *r, result *res)
   char query [4096];
   bool ret;
   char *t;
-
-#if 0
-  snprintf (query, 4095, SQL_F_FETCH_REACTION, r->tId, bullets [r->b].id, r->lane);
-
-  if (__dbg_query (con, query))
-    finish_with_error (con);
-
-  MYSQL_RES *result = mysql_store_result (con);
-  MYSQL_ROW row = 0;
-
-  if (result)
-    row = mysql_fetch_row (result);
-  else if (mysql_errno (con))
-    finish_with_error (con);
-
-  if (row)
-    {
-      r->rId = strtoull (row [0], NULL, 0);
-      ret = (!row [1] || !row [1][0]);
-    }
-  else
-    r->rId = 0;
-  mysql_free_result (result);
-
-  if (r->rId)
-    return ret;
-#endif
 
   switch (res->type)
     {

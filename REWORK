@@ -1,0 +1,29 @@
+REWORK IDEAS:
+DATABSE:
+	+ store just ONE phase of an oscilating target. (Save around 40-50% of targets in DB!).
+	  => reaction needs initial_tId, initial_phase, result_tId, result_phase instead of *_tId
+	+ add a table of ship parts (rephasers, rakes, basic track)
+		+ track: just rle + size_x, size_y
+		+ rephaser: rle, size_x/y, delta_state
+		+ rake: rle, size_x/y, delta_state, COST, bullet, lane
+	+ alter table reaction: replace "bullet id" (bId) with "rake id" (rId)
+	+ resize most int(11) columns to smaller types
+	+ remove eId from emitted? On the other hand: tables without an explicit PRIMARY KEY seem
+	  to get an implicit one. And I'm not to sure that defining rId, gen, offX, offY as
+	  PRIMARY KEY would improve anything.
+	+ Target: remove index off rle, add a non-unique indexed 4-byte-hash
+	+ maybe let all that AUTO_INCREMENT stuff be. We allways will be the only one altering the DB at
+	  given point in time. If we counted reactions and targets ourselves, we'd be able to just
+	  DELAYED INSERT those too. Maybe not.
+
+C-Code:
+	+ What happens if we kept a bitmap for all hash values?
+	  (Note: that table would be a fixed 512 MB, because hash function is (unsigned) int).
+		+ We could check instantly iff a certain value has been used before.
+		+ If it is unused we could theoretically use "INSERT DELAYED" - but only if
+		  we handled the auto_increment ourselves, so we could use tId without
+		  needing last_insert_id () or something.
+		+ BUT: if it *has* been used, we still had to check the DB manually.
+		  (And then either add a new target or retreive the corresponding tId).
+	+ Shall we move to a pat_generate () which handles more then one cell at a time?
+	  Would this be significantly faster?

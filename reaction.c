@@ -17,8 +17,10 @@
 
 static target **tgts;
 static object *ships = NULL;
+static part   *parts = NULL;
 static found  *emitted;		// TO DO: ./. pattern.c::findings []
 static int    n_emitted = 0;
+static int    *Costs = NULL;
 
 
 int cost_for (int old_lane, int new_lane)
@@ -28,9 +30,9 @@ int cost_for (int old_lane, int new_lane)
 
   // C operator % does not what we want, if LHS < 0
   while (d < 0)
-    d += nCOSTS;
+    d += LANES;
 
-  return COSTS [d % nCOSTS];
+  return Costs [d % LANES];
 }
 
 
@@ -439,6 +441,13 @@ void init_reactions (void)
           
   // load all standard ships so we can search for them ;)
   ships = db_load_space_ships ();
+
+  // load all parts we can use for our ship-to-build.
+  bullets = db_load_bullets_for (SHIPNAME);
+  parts = db_load_parts_for (SHIPNAME);
+
+{int n; for (n = 0; bullets [n].id; n++) printf ("Bullet %llu: ->%llu\n", bullets [n].id, bullets [n].oId);}
+{int n; for (n = 0; parts [n].pId; n++) printf ("Part %d: %llu, %s, %u, %u, %u, %d, %u\n", n, parts [n].pId, parts [n].name, parts [n].type, parts [n].lane_adjust, parts [n].lane_fired, parts [n].b, parts [n].cost);}
 
 // {int i; for (i = 0; ships [i].id > 0; i++) printf ("%d: Phase %d of '%s': (%d, %d)\n", i, ships [i].phase, ships [i-ships [i].phase].name, ships [i].offX, ships [i].offY);}
 }

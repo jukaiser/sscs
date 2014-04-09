@@ -22,6 +22,19 @@ typedef struct
     reaction_type type;
   } result;
 
+typedef enum {pt_track, pt_rephaser, pt_rake} part_type;
+typedef struct
+  {
+    // For the search program we only need some fields of the DB table, the rest is only needed for stitching stuff up.
+    ROWID	  pId;
+    char	  *name;	// part.part_name
+    part_type	  type;
+    unsigned	  lane_adjust;
+    unsigned	  lane_fired;
+    int		  b;		// index in bullets [] for part.bId
+    unsigned	  cost;
+  } part;
+
 // better naming plx
 void build_reactions (int nph, int b, bool preload, unsigned old_cost, int old_lane);
 void build_targets (int start, int nph);

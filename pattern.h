@@ -18,7 +18,7 @@ typedef enum {topleft, topright, bottomleft, bottomright} corner;
 typedef struct
   {
     ROWID   id;				// ROW ID in database table
-    char    *name;			// name to access/reference this bullet.
+    // char    *name;			// name to access/reference this bullet.
     ROWID   oId;			// id of the corresponding object
     pattern *p;
     int     dx, dy, dt;			// speed and period of the bullet
@@ -62,7 +62,7 @@ typedef struct
   } found;
 
 extern pattern *lab;
-extern bullet bullets [1];
+extern bullet *bullets;
 
 pattern *pat_allocate (pattern *p, int sx, int sy);
 void pat_init (pattern *p);
@@ -83,6 +83,8 @@ char *pat_rle (pattern *pat);
 bool pat_compare (pattern *p1, pattern *p2);
 int  pat_first_X (pattern *p, int Y);
 uint32_t pat_GSF_hash (pattern *pat);
+
+int bullet_index (ROWID bId);
 
 void obj_mark_first (object *p);
 found *obj_search (int gen, object *objs, int *n);

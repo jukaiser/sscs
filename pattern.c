@@ -17,7 +17,7 @@
 
 
 pattern *lab = NULL;
-bullet bullets [1];
+bullet *bullets = NULL;
 found   *findings = NULL;
 int maxX, maxY, maxGen, maxFound, nFound;
 
@@ -1207,9 +1207,27 @@ uint32_t pat_GSF_hash (pattern *pat)
 		continue;
 
 	    hash = (hash * 1000003U) ^ (cy - pat->top);
-	    hash = (hash * 1000003U) ^ (cx - pat->left);
+	    // hash = (hash * 1000003U) ^ (cx - pat->left);
+	    hash = (hash * 1001003U) ^ (cx - pat->left);
         }
     }
    
     return hash;
 }
+
+
+int bullet_index (ROWID bId)
+
+{
+  int i;
+
+  assert (bullets);
+
+  for (i = 0; bullets [i].id; i++)
+    if (bullets [i].id == bId)
+      return i;
+
+  printf ("DEBUG: %llu - %d\n", bId, i);
+  assert (0);
+}
+

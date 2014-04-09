@@ -62,11 +62,10 @@ printf ("Labsize: %dx%dx%d\n", MAXWIDTH, MAXHEIGHT, MAXGEN+1+MAXPERIOD);
       exit (3);
     }
 
-  // load our bullet (lanes to use are defined with the bullet)
-  db_bullet_load (BULLET, &bullets [0]);
-
   // Initialize the reaction handling module
   init_reactions ();
+
+exit (0); // Rest remains to be rewritten.
 
   // Either we have to load a set of start targets and build reactions based on it, or we are extending an previous search ...
   if (extend_old_search > 0)
@@ -119,9 +118,11 @@ if (o_cost < r->cost) queue_info (); o_cost = r->cost;
       handle (r);
     }
 
+/*
   free (bullets [0].name);
   pat_deallocate (bullets [0].p);
   free (bullets [0].p);
+*/
 
   printf ("All reactions upto a cost of %d handled!\n", MAXCOST);
 

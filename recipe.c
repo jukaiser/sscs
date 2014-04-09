@@ -15,6 +15,7 @@
 #include "database.h"
 
 
+#ifdef REWRITTEN
 #define	PARTWIDTH	1000
 #define PARTHEIGHT	300
 #define PART_DY		270
@@ -477,3 +478,10 @@ assert (MAXPERIOD <= P_MAX);
       // printf ("x = %d, y = %d, rule = B3/S23\n%s\n", W(&constructor), H(&constructor), pat_rle (&constructor));
     }
 }
+#else
+main (int argc, char **argv)
+
+{
+  printf ("Sorry. You still have to rewrite this stuff COMPLETELY!\n");
+}
+#endif

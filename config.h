@@ -18,7 +18,7 @@ extern int   MAXGEN;
 extern int   MAXPERIOD;
 
 extern int   MAX_RLE;		// Max size of any RLE that we can encode.
-extern char *BULLET;		// What bullet will we use. (DB-Table name!)
+extern char *SHIPNAME;		// Name of the ship. Needed to load it's parts
 extern char *START;		// Where do we find the first targets? (filename)
 extern int   MAX_FIND;		// Maximum number of sub patterns to detect before pattern analyzer calls it quits.
 
@@ -40,8 +40,6 @@ extern int  nSHIP_DIRS;
 
 extern int   LANES;		// Number of possible Lanes to look at
 extern bool  RELATIVE;		// Normally RELATVIE will be true. (both elbow movements and rake rephasings are based on the last lane used)
-extern int  *COSTS;		// Cost of using a certain lane. If relative == true, COSTS [i] means cost for lane(n+1) ::= lane(n) + i
-extern int  nCOSTS;		// # of elements in COSTS []
 extern int  MAXDELTA;		// maximum value in COSTS
 
 /* Database interace */
@@ -55,11 +53,9 @@ extern char *DBPASSWD;
    For each table we need a set of three templates: SQL_INSERT_*, SQL_FETCH_*, SQL_UNIQUE_*
    They are used for storing and retreiving data to and from the table - and for checking if an object is already stored there.
 */
-extern char *SQL_F_BULLET;
 extern char *SQL_F_FETCH_TARGET;
 extern char *SQL_F_SEARCH_TARGET;
 extern char *SQL_F_STORE_TARGET;
-extern char *SQL_F_LINK_TARGET;
 extern char *SQL_F_FETCH_REACTION;
 extern char *SQL_F_IS_FINISHED_REACTION;
 extern char *SQL_F_STORE_REACTION;
@@ -67,6 +63,10 @@ extern char *SQL_F_STORE_REACTION;
 // extern char *SQL_F_FINISH_REACTION;
 extern char *SQL_F_STORE_EMIT;
 extern char *SQL_COUNT_SPACESHIPS;
-extern char *SQL_SPACESHIPS;
+extern char *SQL_F_SPACESHIPS;
+extern char *SQL_COUNT_BULLETS;
+extern char *SQL_F_BULLETS;
+extern char *SQL_COUNT_PARTS;
+extern char *SQL_F_PARTS;
 
 void config_load (const char *cfg_name);
