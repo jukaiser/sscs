@@ -16,18 +16,22 @@ CREATE TABLE bullet (
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 DROP TABLE IF EXISTS chain;
--- CREATE TABLE chain (
-  -- cId INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  -- context VARCHAR(40) NOT NULL,
-  -- parent_tId INT UNSIGNED DEFAULT NULL,
-  -- parent_cId INT UNSIGNED DEFAULT NULL,
-  -- rId INT UNSIGNED DEFAULT NULL,
-  -- cost TINYINT UNSIGNED NOT NULL,
-  -- KEY (context),
-  -- KEY (parent_tId),
-  -- KEY (parent_cId),
-  -- KEY (cost)
--- ) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol' INDEX DIRECTORY = '/home/mysql-gol';
+DROP TABLE IF EXISTS transition;
+CREATE TABLE transition (
+  trId INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  rId INT UNSIGNED NOT NULL,			-- reaction.rId
+  initial_tId INT UNSIGNED NOT NULL,		-- target.tId
+  initial_state TINYINT UNSIGNED NOT NULL,
+  result_tId INT UNSIGNED NOT NULL,		-- target.tId
+  result_state TINYINT UNSIGNED NOT NULL,
+  rephase TINYINT UNSIGNED NOT NULL,
+  delay TINYINT UNSIGNED NOT NULL,
+  pId INT UNSIGNED NOT NULL,			-- part.pId
+  cost TINYINT UNSIGNED NOT NULL,
+  total_cost TINYINT UNSIGNED NOT NULL,
+  KEY (initial_tId, initial_state),
+  KEY (result_tId, result_state)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol' INDEX DIRECTORY = '/home/mysql-gol';
 
 DROP TABLE IF EXISTS emitted;
 CREATE TABLE emitted (
@@ -47,22 +51,22 @@ CREATE TABLE reaction (
   rId INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   initial_tId INT UNSIGNED NOT NULL,		-- target.tId
   initial_phase TINYINT UNSIGNED NOT NULL,
-  pId INT UNSIGNED NOT NULL,			-- part.pId
+  bId INT UNSIGNED NOT NULL,			-- bullet.bId
   lane TINYINT UNSIGNED NOT NULL,
   result_tId INT UNSIGNED NOT NULL,		-- target.tId
   result_phase TINYINT UNSIGNED NOT NULL,
   offX TINYINT NOT NULL,
   offY TINYINT NOT NULL,
-  pregen TINYINT UNSIGNED NOT NULL,
+  skipgen TINYINT UNSIGNED NOT NULL,
   gen SMALLINT UNSIGNED NOT NULL,
   result ENUM('dies','fly-by','stable','unfinished', 'explodes','pruned') DEFAULT NULL,
   emits_ships ENUM('false','true') DEFAULT 'false',
-  cost TINYINT UNSIGNED NOT NULL,
+  -- cost TINYINT UNSIGNED NOT NULL,
   -- summary VARCHAR(4000) NOT NULL,
-  UNIQUE (initial_tId, initial_phase, pId, lane),
-  KEY (result),
-  KEY (initial_tId),
-  KEY (result_tId)
+  UNIQUE (initial_tId, initial_phase, bId, lane),
+  -- KEY (result),
+  -- KEY (initial_tId),
+  KEY (result_tId, result_phase)
   -- FULLTEXT INDEX (summary)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol' INDEX DIRECTORY = '/home/mysql-gol';
 
@@ -109,7 +113,7 @@ CREATE TABLE part (
   fireX TINYINT UNSIGNED,
   fireY TINYINT UNSIGNED,
   type ENUM('track','rephaser','rake') NOT NULL,
-  lane_adjust TINYINT,
+  lane_adjust TINYINT UNSIGNED,
   bId INT UNSIGNED,				-- bullet.bId
   lane_fired TINYINT UNSIGNED,
   cost TINYINT UNSIGNED,

@@ -1,7 +1,5 @@
 // TO DO: DEAD ./. UNDEF!!!!
 /* Dealing with GoL patterns. */
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h> 
@@ -10,10 +8,6 @@
 #include "config.h"
 #include "pattern.h"
 #include "profile.h"
-
-
-#define ALLOC(t,arr,n)  {arr = (t *)calloc (n, sizeof (t)); if (!arr) {fprintf (stderr, "calloc () failed!\n"); exit (2);}}
-//#define ALLOC(t,arr,n)        {arr = (t *)calloc (n, sizeof (t)); if (!arr) {fprintf (stderr, "calloc () failed!\n"); exit (2);} else printf ("%p -> %ld\n", arr, n * sizeof (t));}
 
 
 pattern *lab = NULL;
@@ -1208,7 +1202,7 @@ uint32_t pat_GSF_hash (pattern *pat)
 
 	    hash = (hash * 1000003U) ^ (cy - pat->top);
 	    // hash = (hash * 1000003U) ^ (cx - pat->left);
-	    hash = (hash * 1001003U) ^ (cx - pat->left);
+	    hash = (hash * 1000003U) ^ (cx - pat->left);
         }
     }
    

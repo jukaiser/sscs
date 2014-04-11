@@ -1,7 +1,5 @@
 /* Maintaining a weighted queue */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <assert.h>
@@ -117,12 +115,7 @@ void queue_init (void)
   if (chunks)
     free (chunks);
 
-  chunks = calloc (sizeof (chunk), MAXDELTA+1);
-  if (!chunks)
-    {
-      perror ("queue_init () - calloc()");
-      exit (2);
-    }
+  ALLOC(chunk,chunks,MAXDELTA+1)
   current = 0;
 
   // Just to be safe.
@@ -136,7 +129,7 @@ void queue_init (void)
 }
 
 
-bool queue_insert (int cost, ROWID tId, uint8_t  b, uint8_t  lane, uint8_t  delta)
+bool queue_insert (int cost, ROWID tId, uint8_t phase, uint8_t  state, uint8_t  b, uint8_t  lane)
 
 {
   chunk *cp;
@@ -169,10 +162,10 @@ bool queue_insert (int cost, ROWID tId, uint8_t  b, uint8_t  lane, uint8_t  delt
 
   // Insert new reaction at the end of the selected chunk
   r = &cp->r [cp->n_put++];
-  r->rId   = 0;
   r->tId   = tId;
+  r->phase = phase;
   r->cost  = cost;
-  r->delta = delta;
+  r->state = state;
   r->b     = b;
   r->lane  = lane;
 

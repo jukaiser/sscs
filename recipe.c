@@ -3,8 +3,6 @@
 #include <stdbool.h>
 #include <my_global.h>
 #include <mysql.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>

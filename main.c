@@ -1,8 +1,5 @@
 /* main body of Slow Salvo Construction Search program */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
@@ -65,8 +62,6 @@ printf ("Labsize: %dx%dx%d\n", MAXWIDTH, MAXHEIGHT, MAXGEN+1+MAXPERIOD);
   // Initialize the reaction handling module
   init_reactions ();
 
-exit (0); // Rest remains to be rewritten.
-
   // Either we have to load a set of start targets and build reactions based on it, or we are extending an previous search ...
   if (extend_old_search > 0)
     {
@@ -90,7 +85,7 @@ exit (0); // Rest remains to be rewritten.
 		break;
 	    }
 
-	  // We only like still lifes and oscis with p <= MAXPERIOD
+	  // We only like still lifes and oscs with p <= MAXPERIOD
 	  if (nph > MAXPERIOD)
 	    continue;
 
@@ -101,13 +96,15 @@ exit (0); // Rest remains to be rewritten.
 
 	  // build all possible reactions for these targets, queue them for later analysis and check them against our db.
 	  // NOTE: since we are handling starting patterns here, we don't have a "last lane used", yet.
-	  build_reactions (nph, 0, true, -1, -1);
+	  build_reactions (nph, 0, true, 0, 0);
 
 	  // get rid of lingering targets ...
 	  free_targets ();
 	}
       fclose (f);
     }
+
+exit (0); // Rest remains to be rewritten.
 
   // main loop: take chepest reaction off the q, handle it (maybe queueing new reactions for later handling) and check if we could release some memory consuming objects.
   // Rinse and repeat, until queue runs empty (extremly unlikely!) or we get kicked by our user.
@@ -117,12 +114,6 @@ exit (0); // Rest remains to be rewritten.
 if (o_cost < r->cost) queue_info (); o_cost = r->cost;
       handle (r);
     }
-
-/*
-  free (bullets [0].name);
-  pat_deallocate (bullets [0].p);
-  free (bullets [0].p);
-*/
 
   printf ("All reactions upto a cost of %d handled!\n", MAXCOST);
 

@@ -1,7 +1,4 @@
 // Test the hash function.
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
 #include <stdint.h>
 
 #include "config.h"

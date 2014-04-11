@@ -1,8 +1,5 @@
 /* define and handle reactions */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <assert.h>
 
@@ -20,19 +17,39 @@ static object *ships = NULL;
 static part   *parts = NULL;
 static found  *emitted;		// TO DO: ./. pattern.c::findings []
 static int    n_emitted = 0;
-static int    *Costs = NULL;
 
 
-int cost_for (int old_lane, int new_lane)
+typedef struct
+  {
+    uint8_t cost;
+    uint8_t rephase_by;
+    int     fire;
+    uint8_t d_state;
+  } transition;
+
+
+transition *t_table = NULL;
+
+
+uint8_t mod (int value, int divisor)
+// C operator % does not what we want, if LHS < 0
 
 {
-  int d = new_lane - old_lane;
-
   // C operator % does not what we want, if LHS < 0
-  while (d < 0)
-    d += LANES;
+  while (value < 0)
+    value += divisor;
 
-  return Costs [d % LANES];
+  return value % divisor;
+}
+
+
+transition *transition_for (int state, int lane)
+// Our constructing engine is currently in a certaion state and is asked to fire on a certain lane.
+// Calculate the relativ lane number (mod LANES) from this information an return the cheapest known
+// transition for this.
+
+{
+  return &t_table [mod (lane - state, LANES)];
 }
 
 
@@ -80,37 +97,33 @@ void free_targets (void)
 }
 
 
-void build_reactions (int nph, int b, bool preload, unsigned old_cost, int old_lane)
+void build_reactions (int nph, int b, bool preload, uint8_t old_cost, uint8_t state)
 
 {
-  int i, j, cost;
-  uint8_t delta;
+  uint8_t phase, j, cost;
 
-  for (i = 0; i < nph; i++)
+  for (phase = 0; phase < nph; phase++)
     {
-      int n = tgt_count_lanes (tgts [i], b);
+      int n = tgt_count_lanes (tgts [phase], b);
 
       if (LANES > 0 && LANES < n)
 	n = LANES;
       for (j = 0; j < n; j++)
 	{
-	  if (preload)
+	  if (!preload)
 	    {
-	      // we're preloading!
-	      cost = 0;
-	      delta = INT8_C (0);
+	      // queue reaction for later analysis ...
+	      transition *t  = transition_for (state, j);
+	      queue_insert (old_cost + t->cost, tgts [phase]->id, phase, b, j, state);
 	    }
 	  else
 	    {
-	      int d = cost_for (old_lane, j);
-	      assert (d > 0 && d < UINT8_MAX);
-	      delta = (uint8_t) d;
-	      cost =  (unsigned) old_cost + (unsigned) delta;
+	      // we're preloading!
+	      // Basically this means, that we have NO current state ... and therefore no sensible notion of a "cost".
+	      uint8_t s;
+	      for (s = 0; s < LANES; s++)
+		queue_insert (0, tgts [phase]->id, phase, b, j, s);
 	    }
-
-	  // Check our current reaction against db ... we don't need to follow it thru if it already handled completely.
-	  // if (!db_is_reaction_finished (tgts [i]->id, b, j))
-	  queue_insert (cost, tgts [i]->id, b, (uint8_t) j, delta);
 	}
     }
 }
@@ -162,11 +175,10 @@ static void dies_at (reaction *r, int i, result *res)
 }
 
 
-static void emit (reaction *r, int gen, int offX, int offY, ROWID oId)
+static void emit (ROWID rId, int gen, int offX, int offY, ROWID oId)
 
 {
-  // printf ("calling db_store_emit (%llu, %llu, %d, %d, %d)\n", r->rId, oId, offX, offY, gen);
-  db_store_emit (r->rId, oId, offX, offY, gen);
+  db_store_emit (rId, oId, offX, offY, gen);
 }
 
 
@@ -186,7 +198,6 @@ static bool fly_by (reaction *r, target *tgt, int i, result *res)
       // refly with a new lane.
       r->lane += LANES;
       assert (r->lane <= UINT8_MAX);
-      r->rId = 0;
       return true;
     }
 
@@ -226,15 +237,18 @@ static void stabilizes (reaction *r, target *old, int i, int p, result *res)
 
   // remember our success
   target *new = tgts [0];
-  // db_reaction_finish (r, new->id, new->left-old->left, new->top-old->top, i, rt_stable);
   res->result_tId = new->id;
   res->offX = new->left-old->left;
   res->offY = new->top-old->top;
   res->gen = i;
   res->type = rt_stable;
 
-  // build all possible reactions for these targets, queue them for later analysis and check them against our db.
-  build_reactions (p, r->b, false, r->cost, r->lane - tgt_adjust_lane (r->b, old, new));
+  // build all possible reactions for these targets and queue them for later analysis.
+  int state = r->state;
+  state += transition_for (r->state, r->lane)->d_state;
+  state -= tgt_adjust_lane (r->b, old, new);
+  state = mod (state, LANES);
+  build_reactions (p, r->b, false, r->cost, state);
   free_targets ();
 }
 
@@ -259,7 +273,6 @@ static int search_ships (reaction *r, target *tgt, int gen, result *res)
   if (!emitted)
     {
       // obj_search () found something we do NOT like to find. Discard this reaction!
-      // db_reaction_emits (r->rId);
       prune (r, res);
       return -1;
     }
@@ -394,16 +407,16 @@ void handle (reaction *r)
   target tgt;
   bool   re_fly = false;
   int    i;
+  ROWID  rId;
 
-assert (r);
-assert (!r->rId);
+  assert (r);
 
   // Maybe the collision has been queued more then once.
   // And maybe *we* are not handling the cheapest of those.
   // Since we are queueing reactions in order of least cost we are able to check this.
   // NOTE: since "re-flying" is handled immediately, we only have to check this for the very
   //	   first pass.
-  if (db_is_reaction_finished (r->tId, r->b, r->lane))
+  if (db_is_reaction_finished (r->tId, r->phase, r->b, r->lane))
     return;
 
   // Fetch our target from the datebase.
@@ -419,26 +432,55 @@ assert (!r->rId);
   while (re_fly);
 
   // Store our reaction, now that we know everything about it!
-  db_reaction_keep (r, &res);
+  rId = db_reaction_keep (r, &res);
 
   // If we emitted any ships then store them.
   // Note that we want *relative* postions for our DB!
   for (i = 0; i < n_emitted; i++)
-    emit (r, emitted [i].gen, emitted [i].offX-tgt.X, emitted [i].offY-tgt.Y, emitted [i].obj->id);
+    emit (rId, emitted [i].gen, emitted [i].offX-tgt.X, emitted [i].offY-tgt.Y, emitted [i].obj->id);
 
   // We don't need the current target any longer.
   free_target (&tgt);
 }
 
 
+static void calc_transitions (int lane, int base_cost)
+// recursively find the cheapest way to fire a bullet on a given lane, if starting from a given lane.
+
+{
+  int p;
+
+  // First handle all rakes
+  for (p = 0; parts [p].pId; p++)
+    if (parts [p].type == pt_rake)
+      if (t_table [(lane + parts [p].lane_fired) % LANES].fire < 0 || t_table [(lane + parts [p].lane_fired) % LANES].cost > base_cost + parts [p].cost)
+	{
+// SOME assert()ions please?
+	  t_table [(lane + parts [p].lane_fired) % LANES].cost	     = base_cost + parts [p].cost;
+	  t_table [(lane + parts [p].lane_fired) % LANES].rephase_by = lane;
+	  t_table [(lane + parts [p].lane_fired) % LANES].fire	     = p;
+	  t_table [(lane + parts [p].lane_fired) % LANES].d_state    = (lane + parts [p].lane_adjust) % LANES;
+	}
+
+  // Then recurse for all rephasers.
+  // TO CHECK: I never tried it with more then one kind of rephaser, yet. YMMV
+  for (p = 0; parts [p].pId; p++)
+    if (parts [p].type == pt_rephaser)
+      if ((lane + parts [p].lane_adjust) % LANES != 0)
+	calc_transitions ((lane + parts [p].lane_adjust) % LANES, base_cost + parts [p].cost);
+}
+
+
 void init_reactions (void)
 
 {
+  int l;
+
   // if this fails we need to redefine struct reaction in reaction.h
   assert (LANES <= UINT8_MAX);
 
-  tgts = calloc (MAXPERIOD, sizeof (target *));
-          
+  ALLOC (target *, tgts, MAXPERIOD)
+
   // load all standard ships so we can search for them ;)
   ships = db_load_space_ships ();
 
@@ -446,8 +488,24 @@ void init_reactions (void)
   bullets = db_load_bullets_for (SHIPNAME);
   parts = db_load_parts_for (SHIPNAME);
 
-{int n; for (n = 0; bullets [n].id; n++) printf ("Bullet %llu: ->%llu\n", bullets [n].id, bullets [n].oId);}
-{int n; for (n = 0; parts [n].pId; n++) printf ("Part %d: %llu, %s, %u, %u, %u, %d, %u\n", n, parts [n].pId, parts [n].name, parts [n].type, parts [n].lane_adjust, parts [n].lane_fired, parts [n].b, parts [n].cost);}
+  assert (bullets [1].id == 0);
+  /*
+     NOTE: implementing multiple bullets:
+	- the cost-calculations (transition_for () and friends) and tgt_adjust_lane () would have to be done for EVERY bullet (at least for every variant
+	  of bullet with a differnt value for (lane_dx, lane_dy))
+	- As a consequence state would have to be tracked per bullet, or made at least two dimensional (= offset between track and construction site).
+	- Generally: everything with a notion of "lane" or "state" has to be reviewed.
+	- Enumeration of reactions (i.e. build_reactions ()) has to be done for all bullets.
+  */
 
-// {int i; for (i = 0; ships [i].id > 0; i++) printf ("%d: Phase %d of '%s': (%d, %d)\n", i, ships [i].phase, ships [i-ships [i].phase].name, ships [i].offX, ships [i].offY);}
+  // Calculate the costs for firing on a given lane based on the current "state" of the tracks.
+  ALLOC(transition,t_table,LANES)
+
+  for (l = 0; l < LANES; l++)
+    t_table [l].fire = -1;
+
+  calc_transitions (0, 0);
+
+  for (l = 0; l < LANES; l++)
+    printf ("dLane = %d: cost=%d, firing=%s, state=%d\n", l, t_table [l].cost, parts [t_table [l].fire].name, t_table [l].d_state);
 }

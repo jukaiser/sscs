@@ -1,7 +1,5 @@
 /* ship generator (fills DB Table space_ships */
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 

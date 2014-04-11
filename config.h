@@ -1,6 +1,11 @@
 /* Customizable parts of the search program */
 
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define ALLOC(t,arr,n)  {arr = (t *)calloc (n, sizeof (t)); if (!arr) {fprintf (stderr, "calloc () failed!\n"); exit (2);}}
+//#define ALLOC(t,arr,n)        {arr = (t *)calloc (n, sizeof (t)); if (!arr) {fprintf (stderr, "calloc () failed!\n"); exit (2);} else printf ("%p -> %ld\n", arr, n * sizeof (t));}
 
 
 typedef enum {dir_north, dir_northeast, dir_east, dir_southeast, dir_south, dir_southwest, dir_west, dir_north_west} ship_dirs;

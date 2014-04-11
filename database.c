@@ -4,8 +4,6 @@
 #include <my_global.h>
 #include <mysql.h>
 #include <mysqld_error.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -162,12 +160,7 @@ bullet *db_load_bullets_for (const char *shipname)
       exit (2);
     }
 
-  ret = calloc (n+1, sizeof (bullet));
-  if (!ret)
-    {
-      perror ("db_load_bullets_for - calloc");
-      exit (2);
-    }
+  ALLOC(bullet,ret,n+1)
 
   snprintf (query, 4095, SQL_F_BULLETS, shipname);
   if (__dbg_query (con, query))
@@ -257,12 +250,7 @@ part *db_load_parts_for (const char *shipname)
       exit (2);
     }
 
-  ret = calloc (n+1, sizeof (part));
-  if (!ret)
-    {
-      perror ("db_load_parts_for - calloc");
-      exit (2);
-    }
+  ALLOC(part,ret,n+1)
 
   snprintf (query, 4095, SQL_F_PARTS, shipname);
   if (__dbg_query (con, query))
@@ -343,12 +331,7 @@ object *db_load_space_ships (void)
       exit (2);
     }
 
-  ret = calloc (n+1, sizeof (object));
-  if (!ret)
-    {
-      perror ("db_load_space_ships - calloc");
-      exit (2);
-    }
+  ALLOC(object,ret,n+1)
 
   if (__dbg_query (con, SQL_F_SPACESHIPS))
     finish_with_error (con);
@@ -439,13 +422,13 @@ assert (&ret [i] == (ret [i].base + ret [i].phase));
 }
 
 
-bool db_is_reaction_finished (ROWID tId, unsigned b, unsigned lane)
+bool db_is_reaction_finished (ROWID tId, unsigned phase, unsigned b, unsigned lane)
 
 {
   char query [4096];
   bool ret;
 
-  snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, tId, bullets [b].id, lane);
+  snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, tId, phase, bullets [b].id, lane);
 
   if (__dbg_query (con, query))
     finish_with_error (con);
@@ -471,7 +454,7 @@ bool db_is_reaction_finished (ROWID tId, unsigned b, unsigned lane)
 }
 
 
-bool db_reaction_keep (reaction *r, result *res)
+ROWID db_reaction_keep (reaction *r, result *res)
 // sync the given reaction with our database.
 // return false if we do not need to handle it anymore.
 // TO DO: we should take a closer look at "exploding" and "unfinished" reactions. Maybe the context has change since the last run ...
@@ -510,34 +493,12 @@ bool db_reaction_keep (reaction *r, result *res)
       if (mysql_errno (con) != ER_DUP_ENTRY)
 	finish_with_error (con);
       else
-	{
-	  r->rId = 0;
-	  return false;
-	}
+	return 0ULL;
     }
   if (mysql_affected_rows (con) != 1)
-    {
-      r->rId = 0;
-      return false;
-    }
+    return 0ULL;
 
-  r->rId = mysql_insert_id(con);
-  return true;	// new reaction
-}
-
-
-void db_reaction_emits (ROWID rId)
-
-{
-assert (0);
-#if 0
-  char query [4096];
-
-  snprintf (query, 4095, SQL_F_REACTION_EMITS, rId);
-
-  if (__dbg_query (con, query))
-    finish_with_error (con);
-#endif
+  return mysql_insert_id (con);
 }
 
 

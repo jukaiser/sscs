@@ -1,6 +1,4 @@
 /* parse a simple .cfg file to a set of global parameters */
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -43,7 +41,7 @@ char *SQL_F_STORE_TARGET =
 	"INSERT INTO target (tId, rle, width, height, combined_width, combined_height, offX, offY, period, next_tId) "
 		"VALUES (NULL, '%s', %d, %d, %d, %d, %d, %d, %d, %llu)";
 char *SQL_F_FETCH_REACTION = "SELECT rId, result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %u";
-char *SQL_F_IS_FINISHED_REACTION = "SELECT result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %u";
+char *SQL_F_IS_FINISHED_REACTION = "SELECT result FROM reaction WHERE initial_tId = %llu AND initial_phase = %u AND bId = %llu AND lane = %u";
 char *SQL_F_STORE_REACTION =
 	"INSERT INTO reaction (rId, initial_tId, bId, lane, result_tId, offX, offY, gen, result, cost, emits_ships) "
 		"VALUES (NULL, %llu, %llu, %u, %llu, %d, %d, %u, '%s', %u, '%s')";
@@ -281,12 +279,7 @@ static void handle_array (const char *var, int **v_ptr, int *n_ptr, char *val)
 	fprintf (stderr, "config: Variable '%s': ignoring trailing garbage ('%s')!\n", var, val+1);
 
       // Ok ... parsing was successful!
-      *v_ptr = calloc (nLanes, sizeof (int));
-      if (!*v_ptr)
-	{
-	  perror ("config::handle_array() - calloc");
-	  exit (2);
-	}
+      ALLOC(int,*v_ptr,nLanes)
       for (k = 1; k <= nLanes; k++)
 	(*v_ptr) [(k*step)%nLanes] = k;
       *n_ptr = nLanes;
@@ -296,12 +289,7 @@ static void handle_array (const char *var, int **v_ptr, int *n_ptr, char *val)
 
   // hard to know how many elements we'll end up with. Better safe then sorry ...
   // since we need atleast one WS between to values 1+strlen()/2 should be fine.
-  *v_ptr = calloc (1+strlen (val)/2, sizeof (int));
-  if (!*v_ptr)
-    {
-      perror ("config::handle_array() - calloc");
-      exit (2);
-    }
+  ALLOC(int,*v_ptr,1+strlen (val)/2)
 
   // Parse each value into a number ...
   *n_ptr = 0;

@@ -24,4 +24,4 @@ hashem:	hashem.o pattern.o config.o database.o
 	$(CC) $(CFLAGS) $(LIBS) -o hashem hashem.o pattern.o config.o database.o
 
 clean:
-	rm show_reaction mk_ships sscs recipe *.o core test/core
+	rm show_reaction mk_ships sscs recipe hashem *.o core test/core
