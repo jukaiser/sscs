@@ -1,6 +1,7 @@
 /* define and handle reactions */
 
 #include <stdint.h>
+#include <string.h>
 #include <assert.h>
 
 #include "config.h"
@@ -56,18 +57,37 @@ transition *transition_for (int state, int lane)
 void reaction_targets_keep (int nph)
 
 {
-  int i;
-
-  // sync all we know about tgts with the DB.
-  for (i = nph-1; i >= 0; i--)
+  int i, first;
+  char *f_rle, *t_rle;
+  ROWID id;
+  
+  // Find "first" phase - arbitrarily defined as the one choose by strcmp (rle1, rle2) as "minimal".
+  first = 0;
+  f_rle = strdup (pat_rle (tgts [0]->pat));
+  for (i = 1; i < nph; i++)
     {
-      char *rle = pat_rle (tgts [i]->pat);
-      // if (!db_target_lookup (tgts [i], rle))
-      db_target_store (tgts [i], rle, (i < nph-1) ? tgts [i+1]->id : 0);
+      t_rle = pat_rle (tgts [i]->pat);
+      if (strcmp  (f_rle, t_rle) > 0)
+	{
+	  first = i;
+	  free (f_rle);
+	  f_rle = strdup (t_rle);
+	}
     }
 
-  if (nph > 1)
-    db_target_link (tgts [nph-1]->id, tgts [0]->id);
+  // sync all we know about tgts with the DB.
+assert (first < nph);
+  id = db_target_store (pat_GSF_hash (tgts [first]->pat), f_rle, nph, W(tgts [first]), H(tgts [first]));
+  free (f_rle);
+
+  // Update id and phase of ALL targets.
+  // tgt [first].phase ::= 0 because that is the phase we just saved to the DB!
+  for (i = 0; i < nph; i++)
+    {
+      tgts [i]->id = id;
+      tgts [i]->phase = mod (i - first, nph);
+if (nph > 2) printf ("id = %llu, first=%u, i=%d, phase=%d, nph=%d\n", tgts [i]->id, first, i, tgts [i]->phase, nph);
+    }
 }
 
 
@@ -104,6 +124,7 @@ void build_reactions (int nph, int b, bool preload, uint8_t old_cost, uint8_t st
 
   for (phase = 0; phase < nph; phase++)
     {
+assert (tgts [phase]->id);
       int n = tgt_count_lanes (tgts [phase], b);
 
       if (LANES > 0 && LANES < n)
@@ -114,7 +135,7 @@ void build_reactions (int nph, int b, bool preload, uint8_t old_cost, uint8_t st
 	    {
 	      // queue reaction for later analysis ...
 	      transition *t  = transition_for (state, j);
-	      queue_insert (old_cost + t->cost, tgts [phase]->id, phase, b, j, state);
+	      queue_insert (old_cost + t->cost, tgts [phase]->id, phase, state, b, j);
 	    }
 	  else
 	    {
@@ -122,7 +143,7 @@ void build_reactions (int nph, int b, bool preload, uint8_t old_cost, uint8_t st
 	      // Basically this means, that we have NO current state ... and therefore no sensible notion of a "cost".
 	      uint8_t s;
 	      for (s = 0; s < LANES; s++)
-		queue_insert (0, tgts [phase]->id, phase, b, j, s);
+		queue_insert (transition_for (s, j)->cost, tgts [phase]->id, phase, s, b, j);
 	    }
 	}
     }
@@ -153,6 +174,8 @@ void build_targets (int start, int nph)
   for (i = start; i < start+nph; i++)
     {
       tgt = malloc (sizeof (target));
+      tgt->id = 0ULL;
+      tgt->phase = -1;
       tgt->pat = pat_compact (&lab [i], NULL);
       tgt->nph = nph;
       tgt->top = top;
@@ -170,22 +193,20 @@ void build_targets (int start, int nph)
 static void dies_at (reaction *r, int i, result *res)
 
 {
-  // db_reaction_finish (r, (ROWID)0, 0, 0, i, rt_dies);
   res->type = rt_dies;
 }
 
 
-static void emit (ROWID rId, int gen, int offX, int offY, ROWID oId)
+static void emit (ROWID rId, unsigned seq, int gen, int offX, int offY, ROWID oId)
 
 {
-  db_store_emit (rId, oId, offX, offY, gen);
+  db_store_emit (rId, seq, oId, offX, offY, gen);
 }
 
 
 static bool fly_by (reaction *r, target *tgt, int i, result *res)
 
 {
-  // db_reaction_finish (r, (ROWID)0, 0, 0, i, rt_flyby);
   res->gen = i;
   res->type = rt_flyby;
 
@@ -209,7 +230,6 @@ static bool fly_by (reaction *r, target *tgt, int i, result *res)
 static void prune (reaction *r, result *res)
 
 {
-  // db_reaction_finish (r, (ROWID)0, 0, 0, 0, rt_pruned);
   res->type = rt_pruned;
 }
 
@@ -231,6 +251,7 @@ static void stabilizes (reaction *r, target *old, int i, int p, result *res)
     }
 
   // check with our db, retrieve the ROW-ids if the targets existed or store them if they are new.
+  // NOTE: since checking + storing only if not there is more expensive then just storing (and failing if duplicate) we do not bother to check.
   // _prof_leave ("handle()");
   reaction_targets_keep (p);
   // _prof_enter ();
@@ -241,12 +262,13 @@ static void stabilizes (reaction *r, target *old, int i, int p, result *res)
   res->offX = new->left-old->left;
   res->offY = new->top-old->top;
   res->gen = i;
+  res->lane_adj -= tgt_adjust_lane (r->b, old, new);
   res->type = rt_stable;
 
   // build all possible reactions for these targets and queue them for later analysis.
   int state = r->state;
   state += transition_for (r->state, r->lane)->d_state;
-  state -= tgt_adjust_lane (r->b, old, new);
+  state += res->lane_adj;
   state = mod (state, LANES);
   build_reactions (p, r->b, false, r->cost, state);
   free_targets ();
@@ -256,7 +278,6 @@ static void stabilizes (reaction *r, target *old, int i, int p, result *res)
 static void unstable (reaction *r, int i, result *res)
 
 {
-  // db_reaction_finish (r, (ROWID)0, 0, 0, i, rt_unfinished);
   res->gen = i;
   res->type = rt_unfinished;
 }
@@ -301,6 +322,7 @@ bool run (reaction *r, target *tgt, result *res)
   // Generate until MAXGEN or pattern stabilizes, or maybe until fly-by detected
   for (i = 1; i <= MAXGEN+2; i++)
     {
+// pat_dump (&lab [i-1], true);
       if (!pat_generate (&lab [i-1], &lab [i]))
 	{
 	  dies_at (r, i, res);
@@ -403,11 +425,13 @@ bool run (reaction *r, target *tgt, result *res)
 void handle (reaction *r)
 
 {
-  result res = {0ULL, 0, 0, 0, false, rt_undef};
+  result res = {0ULL, 0, 0, 0, 0, 0, 0, false, rt_undef};
+
   target tgt;
   bool   re_fly = false;
   int    i;
   ROWID  rId;
+  transition *t;
 
   assert (r);
 
@@ -416,11 +440,16 @@ void handle (reaction *r)
   // Since we are queueing reactions in order of least cost we are able to check this.
   // NOTE: since "re-flying" is handled immediately, we only have to check this for the very
   //	   first pass.
-  if (db_is_reaction_finished (r->tId, r->phase, r->b, r->lane))
-    return;
+  rId = db_is_reaction_finished (r->tId, r->phase, r->b, r->lane);
+  if (rId)
+    {
+      t = transition_for (r->state, r->lane);
+      db_store_transition (rId, r->state, r->state+t->d_state, t->rephase_by, parts [t->fire].pId, r->cost, t->cost);
+      return;
+    }
 
   // Fetch our target from the datebase.
-  db_target_fetch (r, &tgt);
+  db_target_reload (&tgt, r->tId, r->phase);
 
   // if we detect a fly-by condition we might want to immediately rerun the reaction on a higher lane ...
   do
@@ -433,11 +462,13 @@ void handle (reaction *r)
 
   // Store our reaction, now that we know everything about it!
   rId = db_reaction_keep (r, &res);
+  t = transition_for (r->state, r->lane);
+  db_store_transition (rId, r->state, r->state+t->d_state, t->rephase_by, parts [t->fire].pId, r->cost, t->cost);
 
   // If we emitted any ships then store them.
   // Note that we want *relative* postions for our DB!
   for (i = 0; i < n_emitted; i++)
-    emit (rId, emitted [i].gen, emitted [i].offX-tgt.X, emitted [i].offY-tgt.Y, emitted [i].obj->id);
+    emit (rId, i, emitted [i].gen, emitted [i].offX-tgt.X, emitted [i].offY-tgt.Y, emitted [i].obj->id);
 
   // We don't need the current target any longer.
   free_target (&tgt);
@@ -461,6 +492,9 @@ static void calc_transitions (int lane, int base_cost)
 	  t_table [(lane + parts [p].lane_fired) % LANES].fire	     = p;
 	  t_table [(lane + parts [p].lane_fired) % LANES].d_state    = (lane + parts [p].lane_adjust) % LANES;
 	}
+      else if (t_table [(lane + parts [p].lane_fired) % LANES].cost == base_cost + parts [p].cost)
+	printf ("Warning: more then one way to reach lane offset %d with cost=%d.\nRandomly taking '%s' instead of '%s'!\n",
+		(lane + parts [p].lane_fired) % LANES, t_table [(lane + parts [p].lane_fired) % LANES].cost, parts [t_table [(lane + parts [p].lane_fired) % LANES].fire].name, parts [p].name);
 
   // Then recurse for all rephasers.
   // TO CHECK: I never tried it with more then one kind of rephaser, yet. YMMV

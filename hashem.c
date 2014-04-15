@@ -10,6 +10,7 @@
 main (int argc, char **argv)
 
 {
+#if 0
   reaction fake;
   target my_tgt;
   ROWID i, n;
@@ -29,4 +30,7 @@ main (int argc, char **argv)
       pat_deallocate (my_tgt.pat);
       free (my_tgt.pat);
     }
+#else
+printf ("Already obsolete?\n");
+#endif
 }

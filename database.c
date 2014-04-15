@@ -18,9 +18,9 @@
 #define __dbg_query mysql_query
 #endif
 
-static MYSQL *con;
+MYSQL *con;
 
-static void finish_with_error(MYSQL *con)
+void finish_with_error(MYSQL *con)
 
 {
   fprintf (stderr, "%u: %s\n", mysql_errno (con), mysql_error (con));
@@ -62,19 +62,19 @@ void db_init (void)
   if (con == NULL)
     {
       fprintf(stderr, "mysql_init () failed\n");
-      exit (2);
-    }
+      exit (2); }
 
   if (mysql_real_connect (con, DBHOST, DBUSER, DBPASSWD, DBNAME, DBPORT, NULL, 0) == NULL)
     finish_with_error (con);
 }
 
 
-bool db_target_lookup (target *tgt, const char *rle)
+ROWID db_target_lookup (uint32_t hash, const char *rle)
 
 {
+  ROWID ret = 0ULL;
   char query [4096];
-  snprintf (query, 4095, SQL_F_SEARCH_TARGET, rle);
+  snprintf (query, 4095, SQL_F_SEARCH_TARGET, hash, rle);
 
   if (__dbg_query (con, query))
     finish_with_error (con);
@@ -88,45 +88,37 @@ bool db_target_lookup (target *tgt, const char *rle)
     finish_with_error (con);
 
   if (row)
-    tgt->id = strtoull (row [0], NULL, 0);
-  else
-    tgt->id = 0;
+    ret = strtoull (row [0], NULL, 0);
   mysql_free_result (result);
 
-  return (tgt->id != 0);
+  return ret;
 }
 
 
-void db_target_store (target *tgt, const char *rle, ROWID prev)
+ROWID db_target_store (uint32_t hash, const char *rle, unsigned nph, unsigned width, unsigned height)
+// Lookup target given by (hash, rle) - if not found, store it.
 
 {
+  int ret;
   char query [4096];
-  snprintf (query, 4095, SQL_F_STORE_TARGET, rle, W(tgt->pat), H(tgt->pat), W(tgt), H(tgt), tgt->X-tgt->left, tgt->Y-tgt->top, tgt->nph, prev);
+
+  ret = db_target_lookup (hash, rle);
+  if (ret)
+    return ret;
+
+  snprintf (query, 4095, SQL_F_STORE_TARGET, hash, rle, nph, width, height);
 
   if (__dbg_query (con, query))
     {
       if (mysql_errno (con) != ER_DUP_ENTRY)
 	finish_with_error (con);
       else
-	{
-	  db_target_lookup (tgt, rle);
-	  return;
-	}
+	return 0ULL;
     }
   if (mysql_affected_rows (con) != 1)
-    {
-      db_target_lookup (tgt, rle);
-      return;
-    }
+    return 0ULL;
 
-  tgt->id = mysql_insert_id(con);
-}
-
-
-void db_target_link (ROWID curr, ROWID nxt)
-
-{
-assert (0); // KILL IT WITH FIRE
+  return mysql_insert_id (con);
 }
 
 
@@ -422,11 +414,11 @@ assert (&ret [i] == (ret [i].base + ret [i].phase));
 }
 
 
-bool db_is_reaction_finished (ROWID tId, unsigned phase, unsigned b, unsigned lane)
+ROWID db_is_reaction_finished (ROWID tId, unsigned phase, unsigned b, unsigned lane)
 
 {
   char query [4096];
-  bool ret;
+  ROWID ret = 0ULL;
 
   snprintf (query, 4095, SQL_F_IS_FINISHED_REACTION, tId, phase, bullets [b].id, lane);
 
@@ -441,12 +433,8 @@ bool db_is_reaction_finished (ROWID tId, unsigned phase, unsigned b, unsigned la
   else if (mysql_errno (con))
     finish_with_error (con);
 
-  if (row)
-    ret = (row [0] && row [0][0]);
-  else
-    ret = false;
-
-// if (ret) printf ("INFO: Skipping already handled reaction tId=%llu ./. (bullet=%u,lane=%u) [stored result was '%s']\n", tId, b, lane, row [0]);
+  if (row && row [0])
+    ret = strtoull (row [0], NULL, 0);
 
   mysql_free_result (result);
 
@@ -486,7 +474,8 @@ ROWID db_reaction_keep (reaction *r, result *res)
 	break;
     }
 
-  snprintf (query, 4095, SQL_F_STORE_REACTION, r->tId, bullets [r->b].id, r->lane, res->result_tId, res->offX, res->offY, res->gen, t, r->cost, (res->emits?"true":"false"));
+  snprintf (query, 4095, SQL_F_STORE_REACTION, r->tId, r->phase, bullets [r->b].id, r->lane, res->lane_adj, res->result_tId, res->result_phase,
+	    res->offX, res->offY, res->delay, res->gen, t, (res->emits?"true":"false"));
 
   if (__dbg_query (con, query))
     {
@@ -502,67 +491,27 @@ ROWID db_reaction_keep (reaction *r, result *res)
 }
 
 
-void  db_store_emit (ROWID rId, ROWID oId, int offX, int offY, int gen)
+void  db_store_emit (ROWID rId, unsigned seq, ROWID oId, int offX, int offY, int gen)
 
 {
   char query [4096];
-  snprintf (query, 4095, SQL_F_STORE_EMIT, rId, oId, offX, offY, gen);
+
+  assert (rId);
+  snprintf (query, 4095, SQL_F_STORE_EMIT, rId, seq, oId, offX, offY, gen);
 
   if (__dbg_query (con, query))
     finish_with_error (con);
-
-#if 0
-  db_reaction_emits (rId);
-#endif
 }
 
 
-void db_reaction_finish (reaction *r, ROWID result_tId, int offX, int offY, int gen, reaction_type type)
-
-{
-assert (0);
-#if 0
-  char query [4096];
-  char *t;
-
-  switch (type)
-    {
-      case rt_undef:
-	t = "";
-	break;
-      case rt_dies:
-	t = "dies";
-	break;
-      case rt_flyby:
-	t = "fly-by";
-	break;
-      case rt_stable:
-	t = "stable";
-	break;
-      case rt_pruned:
-	t = "pruned";
-	break;
-      case rt_unfinished:
-	t = "unfinished";
-	break;
-    }
-
-  snprintf (query, 4095, SQL_F_FINISH_REACTION, result_tId, offX, offY, gen, t, r->cost, r->rId);
-
-  if (__dbg_query (con, query))
-    finish_with_error (con);
-#endif
-}
-
-
-void db_target_fetch (reaction *r, target *t)
+unsigned db_target_fetch (ROWID tId)
 
 {
   char query [4096];
   int width, height, offX, offY;
+  unsigned ret;
 
-  assert (r);
-  snprintf (query, 4095, SQL_F_FETCH_TARGET, r->tId);
+  snprintf (query, 4095, SQL_F_FETCH_TARGET, tId);
 
   if (__dbg_query (con, query))
     finish_with_error (con);
@@ -582,17 +531,67 @@ void db_target_fetch (reaction *r, target *t)
     }
 
   pat_from_string (row [0]);
-  t->pat = pat_compact (&lab [0], NULL);
-  t->nph = atoi (row [1]);
-  width = atoi (row [2]);
-  height = atoi (row [3]);
-  offX = atoi (row [4]);
-  offY = atoi (row [5]);
+  ret = atoi (row [1]);
+
   mysql_free_result (result);
-  t->X = lab [0].left;
-  t->Y = lab [0].top;
-  t->top = t->Y - offY;
-  t->bottom = t->top + height - 1;
-  t->left = t->X - offX;
-  t->right = t->left + width - 1;
+
+  return ret;
+}
+
+
+void db_store_transition (ROWID rId, unsigned old_state, unsigned new_state, unsigned rephase, ROWID pId, unsigned total_cost, unsigned delta_cost)
+
+{
+  char query [4096];
+
+  snprintf (query, 4095, SQL_F_STORE_TRANSITION, rId, old_state, new_state, rephase, pId, delta_cost, total_cost);
+
+  if (__dbg_query (con, query))
+    {
+      if (mysql_errno (con) != ER_DUP_ENTRY)
+	finish_with_error (con);
+    }
+}
+
+
+void db_target_reload (target *tgt, ROWID tId, unsigned phase)
+// Helperfunction: we have loaded phase 0 from the db into lab [0].
+// We need to reconstruct the given phase and all other infos from that.
+
+{
+  int i, nph;
+  int left, right, top, bottom;
+
+  nph = db_target_fetch (tId);
+
+  assert (phase < nph);
+
+  // Build other phases.
+  for (i = 1; i < nph; i++)
+    pat_generate (&lab [i-1], &lab [i]);
+
+  // calculate common bbox of all phases of current target.
+  top    = lab [0].top;
+  bottom = lab [0].bottom;
+  left   = lab [0].left;
+  right  = lab [0].right;
+  for (i = 1; i < nph; i++)
+    {
+      if (lab [i].top    < top)    top    = lab [i].top;
+      if (lab [i].bottom > bottom) bottom = lab [i].bottom;
+      if (lab [i].left   < left)   left   = lab [i].left;
+      if (lab [i].right  > right)  right  = lab [i].right;
+    }
+
+  // Build target.
+  tgt->pat = pat_compact (&lab [phase], NULL);
+  tgt->id = tId,
+  tgt->phase = phase;
+  tgt->nph = nph;
+  tgt->top = top;
+  tgt->bottom = bottom;
+  tgt->left = left;
+  tgt->right = right;
+  tgt->X = lab [phase].left;
+  tgt->Y = lab [phase].top;
 }

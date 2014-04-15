@@ -34,6 +34,7 @@ typedef struct
   {
     ROWID    id;			// ROW ID in database table (0 if not yet stored!)
     pattern *pat;			// actual pattern to use as target
+    int	     phase;			// phase relative to the verion stored in the db.
     int      nph;			// period of pattern
     int      top, bottom, left, right;	// combined bbox of all phases of this target
     int      X, Y;			// position of *this* phase

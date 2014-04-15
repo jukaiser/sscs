@@ -35,20 +35,17 @@ int   DBPORT	  = 3306;
 char *DBNAME	  = "gol";
 char *DBUSER	  = "gol";
 char *DBPASSWD    = "";
-char *SQL_F_FETCH_TARGET = "SELECT rle, period, combined_width, combined_height, offX, offY FROM target WHERE tId = %llu";
-char *SQL_F_SEARCH_TARGET = "SELECT tId FROM target WHERE rle = '%s'";
-char *SQL_F_STORE_TARGET =
-	"INSERT INTO target (tId, rle, width, height, combined_width, combined_height, offX, offY, period, next_tId) "
-		"VALUES (NULL, '%s', %d, %d, %d, %d, %d, %d, %d, %llu)";
-char *SQL_F_FETCH_REACTION = "SELECT rId, result FROM reaction WHERE initial_tId = %llu AND bId = %llu AND lane = %u";
-char *SQL_F_IS_FINISHED_REACTION = "SELECT result FROM reaction WHERE initial_tId = %llu AND initial_phase = %u AND bId = %llu AND lane = %u";
+char *SQL_F_FETCH_TARGET = "SELECT rle, period FROM target WHERE tId = %llu";
+char *SQL_F_SEARCH_TARGET = "SELECT tId FROM target WHERE hashVal = %u AND rle = '%s'";
+char *SQL_F_STORE_TARGET = "INSERT INTO target (hashVal, rle, period, combined_width, combined_height) VALUES (%u, '%s', %u, %u, %u)";
+char *SQL_F_IS_FINISHED_REACTION = "SELECT rId FROM reaction WHERE initial_tId = %llu AND initial_phase = %u AND bId = %llu AND lane = %u";
 char *SQL_F_STORE_REACTION =
-	"INSERT INTO reaction (rId, initial_tId, bId, lane, result_tId, offX, offY, gen, result, cost, emits_ships) "
-		"VALUES (NULL, %llu, %llu, %u, %llu, %d, %d, %u, '%s', %u, '%s')";
-// char *SQL_F_STORE_REACTION = "INSERT INTO reaction (rId, initial_tId, bId, lane) VALUES (NULL, %llu, %llu, %u)";
-// char *SQL_F_REACTION_EMITS = "UPDATE reaction SET emits_ships = 'true' WHERE rId = %llu";
-// char *SQL_F_FINISH_REACTION = "UPDATE reaction SET result_tId = %llu, offX = %d, offY = %d, gen = %d, result = '%s', cost = %u WHERE rId = %llu";
-char *SQL_F_STORE_EMIT = "INSERT DELAYED INTO emitted (eId, rId, oId, offX, offY, gen) VALUES (NULL, %llu, %llu, %d, %d, %d)";
+	"INSERT INTO reaction (initial_tId, initial_phase, bId, lane, lane_adj, result_tId, result_phase, offX, offY, delay, gen, result, emits_ships) "
+		"VALUES (%llu, %u, %llu, %u, %d, %llu, %u, %d, %d, %u, %u, '%s', '%s')";
+char *SQL_F_STORE_TRANSITION =
+	"INSERT INTO transition (rId, initial_state, result_state, rephase, pId, cost, total_cost) "
+		"VALUES (%llu, %u, %u, %u, %llu, %u, %u)";
+char *SQL_F_STORE_EMIT = "INSERT DELAYED INTO emitted (rId, seq, oId, offX, offY, gen) VALUES (%llu, %u, %llu, %d, %d, %d)";
 char *SQL_COUNT_SPACESHIPS = "SELECT COUNT(*) FROM object WHERE dx <> 0 OR dy <> 0";
 char *SQL_F_SPACESHIPS = "SELECT oId, rle, name, dx, dy, dt, phase, offX, offY FROM object WHERE dx <> 0 OR dy <> 0 ORDER BY name, phase";
 char *SQL_COUNT_BULLETS = "SELECT COUNT(DISTINCT bId) FROM part WHERE ship_name = '%s'";
@@ -103,7 +100,6 @@ static cfg_var config [] =
     {"SQL_F_FETCH_TARGET",	   STRING,  &SQL_F_FETCH_TARGET},
     {"SQL_F_SEARCH_TARGET",	   STRING,  &SQL_F_SEARCH_TARGET},
     {"SQL_F_STORE_TARGET",	   STRING,  &SQL_F_STORE_TARGET},
-    {"SQL_F_FETCH_REACTION",	   STRING,  &SQL_F_FETCH_REACTION},
     {"SQL_F_IS_FINISHED_REACTION", STRING,  &SQL_F_IS_FINISHED_REACTION},
     {"SQL_F_STORE_REACTION",	   STRING,  &SQL_F_STORE_REACTION},
     {"SQL_F_STORE_EMIT",	   STRING,  &SQL_F_STORE_EMIT},

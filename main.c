@@ -104,8 +104,6 @@ printf ("Labsize: %dx%dx%d\n", MAXWIDTH, MAXHEIGHT, MAXGEN+1+MAXPERIOD);
       fclose (f);
     }
 
-exit (0); // Rest remains to be rewritten.
-
   // main loop: take chepest reaction off the q, handle it (maybe queueing new reactions for later handling) and check if we could release some memory consuming objects.
   // Rinse and repeat, until queue runs empty (extremly unlikely!) or we get kicked by our user.
   unsigned o_cost = 0;

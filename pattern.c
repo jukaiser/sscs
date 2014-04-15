@@ -608,6 +608,7 @@ void pat_load (FILE *f)
   char buffer [MAX_RLE];
   char *pos = buffer;
   int  size_left = MAX_RLE;
+  buffer [0] = '\0';
 
   /* basic idea: read pattern line by line from f into buffer [] ... then let pat_from_string () do the parsing.
      How to know when a pattern is complete?
@@ -1036,6 +1037,7 @@ void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int 
 
   pat_fill (&lab [0], DEAD); // TO elim this??
   pat_copy  (&lab [0], tgt->X, tgt->Y, tgt->pat);
+//pat_dump (&lab [0], true);
 
   // Find out where to place the bullet.
   switch (b->reference)
