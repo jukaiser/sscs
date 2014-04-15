@@ -13,93 +13,93 @@
 #include "database.h"
 
 
-#ifdef REWRITTEN
-#define	PARTWIDTH	1000
-#define PARTHEIGHT	300
-#define PART_DY		270
-#define	MAXPARTS	100
-#define P_MAX		30
+#define MAXPARTS 100
 
-#define R1L0_RLE	"x = 736, y = 272, rule = B3/S23\n"						\
-			"40b2o114b2o108b2o88b2o108b2o114b2o$40b2o114b2o108b2o88b2o108b2o114b2o\n"	\
-			"26$585bo$584bobo$580b5obo$579bob2ob3o$156b2o108b2o88b2o108b2o114b2obob\n"	\
-			"2o$156b2o108b2o88b2o108b2o113bob3o$581b2o$578bo2b3obo2bo$43bo535b3o2bo\n"	\
-			"$42bobo537b2obo$38bo2b2ob2o539bo$38bo3bobo528b3o7bobo$38bo5bob2o536bo$\n"	\
-			"43b2ob2o$45bo4$36b2o548b2o$36b2o548b2o7$40b2o540b2o$40b2o540b2o8$156b\n"	\
-			"2o108b2o88b2o108b2o145bobo$156b2o108b2o88b2o108b2o146b2o$614bo2$5bo42b\n"	\
-			"2o524b2o$3b2o43b2o524b2o$4b2o16$40b2o540b2o$40b2o540b2o$544bo$543bo$\n"	\
-			"543b3o3$84bo$2o80bobo$obo80b2o71b2o108b2o88b2o108b2o$o155b2o108b2o88b\n"	\
-			"2o108b2o3$48b2o524b2o$48b2o524b2o17$40b2o540b2o$40b2o106b3o431b2o$149b\n"	\
-			"o$149b3o3$60b2o$60bobo$60bo413bo$266b2o88b2o115b3o$266b2o88b2o114b2o2b\n"	\
-			"o$474b3o$158b2o304b2o$48b2o98b2o8b2o304b2o108b2o$48b2o98b2o424b2o3$\n"		\
-			"466bo$464b2o$160bo304b2o$159bobo$158bo3bo$158bo3bo$158bo303b2o$159b3o\n"	\
-			"300b2o7$40b2o114b2o308b2o114b2o$40b2o114b2o308b2o114b2o3$120b2o$120bob\n"	\
-			"o$120bo$673bobo$355bo318b2o$354bo319bo$266bobo82bob2o2bo$263b2obo2bo\n"	\
-			"80bobo2b4o$263b2obo2bo79bo2bo$48b2o98b2o112bob2o87b3o2b2o114b2o98b2o$\n"	\
-			"48b2o98b2o112b4o5bo77b2obo4b2o115b2o98b2o$272b2o75b2obo4bo$265b2o6bo\n"	\
-			"77b2obob2o$262bo3b2obob3o$263b5o70bobo$266bo71bob2o$339b2o6bo16b2o$\n"		\
-			"346bo15bo3b2o2bo$346bo14bo2bob2obobo$262b2o97bo4bo4bo$262b2o93b2o9b3o$\n"	\
-			"356b6o4b3o$356b2obo5b2o50bo$361b2o53bo$360b3o53b3o2$378bo$40b2o114b2o\n"	\
-			"53bo54b2o88b2o21b2o85b2o16bo97b2o$40b2o114b2o51bobo54b2o88b2o20b2o86b\n"	\
-			"2o15bo98b2o$180b2o28b2o271b3o$180bobo$180bo59bo$144bo93b2o$142bobo94b\n"	\
-			"2o$143b2o6$48b2o98b2o124b2o72b2o124b2o98b2o$48b2o98b2o124b2o72b2o124b\n"	\
-			"2o98b2o6$522bo$523b2o$522b2o3$95bobo$95b2o$96bo4$40b2o114b2o108b2o88b\n"	\
-			"2o108b2o114b2o$40b2o114b2o108b2o88b2o108b2o114b2o12$48b2o224b2o72b2o\n"	\
-			"224b2o$48b2o224b2o72b2o224b2o17$40b2o114b2o108b2o88b2o108b2o114b2o$40b\n"	\
-			"2o114b2o108b2o88b2o108b2o114b2o4$733bobo$734b2o$734bo6$48b2o524b2o$48b\n"	\
-			"2o524b2o17$40b2o114b2o108b2o88b2o108b2o114b2o$40b2o114b2o108b2o88b2o\n"	\
-			"108b2o114b2o!\n"
 
-#define REPHASE_RLE	"x = 619, y = 272, rule = B3/S23\n"						\
-			"35b2o114b2o108b2o88b2o108b2o114b2o$35b2o114b2o108b2o88b2o108b2o114b2o\n"	\
-			"27$33bo$32b3ob2o$32bo5bo$31b4o4bo111b2o108b2o88b2o108b2o$31bo7bo111b2o\n"	\
-			"108b2o88b2o108b2o$31bo3b2o2b2o$31bo5bobo$32b2obo2bo536bo$574bobo$32b2o\n"	\
-			"b2o536b2ob2o2bo$34bo8b3o528bobo3bo$571b2obo5bo$571b2ob2o$573bo4$31b2o\n"	\
-			"548b2o$31b2o548b2o7$35b2o540b2o$35b2o540b2o7$5bo$3b2o146b2o108b2o88b2o\n"	\
-			"108b2o$4b2o145b2o108b2o88b2o108b2o3$43b2o524b2o42bo$43b2o524b2o43b2o$\n"	\
-			"613b2o16$35b2o540b2o$35b2o540b2o$74bo$72bobo$73b2o3$534bo$534bobo80b2o\n"	\
-			"$151b2o108b2o88b2o108b2o71b2o80bobo$151b2o108b2o88b2o108b2o155bo3$2o\n"	\
-			"41b2o524b2o$obo40b2o524b2o$o16$35b2o540b2o$35b2o431b3o106b2o$469bo$\n"		\
-			"467b3o3$557b2o$556bobo$558bo$144bo116b2o88b2o$143b3o115b2o88b2o$60b2o\n"	\
-			"80b2obo$60bobo90b2o304b2o$43b2o15bo92b2o304b2o8b2o98b2o$43b2o424b2o98b\n"	\
-			"2o3$151bobo$152b2o$152bo305bo$457bobo$456bo3bo$456bo3bo$155b2o303bo$\n"	\
-			"155b2o300b3o7$35b2o114b2o308b2o114b2o$35b2o114b2o308b2o114b2o3$497b2o$\n"	\
-			"496bobo$498bo2$263bo$120b2o142bo$120bobo138bo2b2obo82bobo$120bo139b4o\n"	\
-			"2bobo80bo2bob2o$266bo2bo79bo2bob2o$43b2o98b2o114b2o2b3o87b2obo112b2o\n"	\
-			"98b2o$43b2o98b2o115b2o4bob2o77bo5b4o112b2o98b2o$261bo4bob2o75b2o$261b\n"	\
-			"2obob2o77bo6b2o$345b3obob2o3bo$278bobo70b5o$277b2obo71bo$253b2o16bo6b\n"	\
-			"2o$248bo2b2o3bo15bo$247bobob2obo2bo14bo$247bo4bo4bo97b2o$248b3o9b2o93b\n"	\
-			"2o$250b3o4b6o$201bo50b2o5bob2o$199bobo54b2o$200b2o54b3o2$240bo$35b2o\n"	\
-			"97bo16b2o85b2o21b2o88b2o54bo53b2o114b2o$35b2o95bobo16b2o86b2o20b2o88b\n"	\
-			"2o54bobo51b2o114b2o$133b2o272b2o28b2o$436bobo$378bo59bo$379b2o93bo$\n"		\
-			"378b2o94bobo$180b2o292b2o$180bobo$180bo4$43b2o98b2o124b2o72b2o124b2o\n"	\
-			"98b2o$43b2o98b2o124b2o72b2o124b2o98b2o6$95bobo$95b2o$96bo3$521bobo$\n"		\
-			"522b2o$522bo4$35b2o114b2o108b2o88b2o108b2o114b2o$35b2o114b2o108b2o88b\n"	\
-			"2o108b2o114b2o12$43b2o224b2o72b2o224b2o$43b2o224b2o72b2o224b2o17$35b2o\n"	\
-			"114b2o108b2o88b2o108b2o114b2o$35b2o114b2o108b2o88b2o108b2o114b2o12$43b\n"	\
-			"2o524b2o$43b2o524b2o17$35b2o114b2o108b2o88b2o108b2o114b2o$35b2o114b2o\n"	\
-			"108b2o88b2o108b2o114b2o!\n"
-
-#define TRAIL_RLE	"x = 544, y = 2, rule = B3/S23\n"						\
-			"o40b2o114b2o108b2o88b2o108b2o114b2o$41b2o114b2o108b2o88b2o108b2o114b2o!\n"
-
+#define SELECT "SELECT reaction.rId, initial_tId, initial_phase, bId, lane, initial_state, rephase, delay, pId, cost, total_cost FROM transition LEFT JOIN reaction USING (rId) "
+#define FIRST  "WHERE rId = %llu ORDER BY cost DESC LIMIT 1"
+#define NEXT   "WHERE result_tId = %llu AND (result_state+%u-lane_adj)%%%u = %u AND total_cost = %u ORDER BY cost DESC LIMIT 1"
 
 
 typedef struct
   {
-    ROWID rId, tId, bId;
-    int   offX, offY;
+    ROWID rId, tId;
+    int	  phase;
+    ROWID bId;
     int   lane;
-    int   delta;
-    int   nph;
+    int	  state;
+    int   rephase;
     int   delay;
+    part  *p;
+    int   cost;
+    int   total_cost;
   } trace;
 
 
+static trace recipe [MAXPARTS];
+static int   n_recipe = 0;
+static object *ships = NULL;
+static part   *parts = NULL;
+
+
+
+part *find_part (ROWID pId)
+
+{
+  int p;
+  for (p = 0; parts [p].pId; p++)
+    if (parts [p].pId == pId)
+      return &parts [p];
+
+  return NULL;
+}
+
+
+trace *follow (const char *q)
+
+{
+  trace *t;
+
+  if (mysql_query (con, q))
+    finish_with_error (con);
+
+  MYSQL_RES *result = mysql_store_result (con);
+
+  if (!result)
+    {
+      fprintf (stderr, "No result for '%s'\n", q);
+      exit (2);
+    }
+
+  MYSQL_ROW row = mysql_fetch_row (result);
+  if (!row)
+    {
+      fprintf (stderr, "No result for '%s'\n", q);
+      exit (2);
+    }
+
+  t = &recipe [n_recipe++];
+  t->rId        = strtoull (row [0], NULL, 0);
+  t->tId        = strtoull (row [1], NULL, 0);
+  t->phase      = atoi (row [2]);
+  t->bId        = strtoull (row [3], NULL, 0);
+  t->lane       = atoi (row [4]);
+  t->state      = atoi (row [5]);
+  t->rephase    = atoi (row [6]);
+  t->delay      = atoi (row [7]);
+  t->p          = find_part (strtoull (row [8], NULL, 0));
+  t->cost       = atoi (row [9]);
+  t->total_cost = atoi (row [10]);
+
+  mysql_free_result (result);
+
+  return t;
+}
+
+
+#if 0
 ROWID tIds [P_MAX];
 int   n_tIds = 0;
-trace recipe [MAXPARTS];
-int   n_recipe = 0;
 MYSQL *con;
 bullet bullets [1];
 
@@ -117,91 +117,6 @@ static void finish_with_error(MYSQL *con)
   fprintf (stderr, "%s\n", mysql_error (con));
   mysql_close (con);
   exit (2);
-}
-
-
-static void load_tgt_bbox (target *t, ROWID tId, int offX, int offY)
-
-{
-  char query [4096];
-  MYSQL_RES *res;
-  MYSQL_ROW row;
-  int width, height;
-
-  snprintf (query, 4095, "SELECT combined_width, combined_height FROM target WHERE tId = %llu", tId);
-  if (mysql_query (con, query))
-    finish_with_error (con);
-
-  res = mysql_store_result (con);
-  if (!res)
-    return;
-
-  row = mysql_fetch_row (res);
-  if (!row)
-    return;
-
-  width = strtoull (row [0], NULL, 0);
-  height = strtoull (row [1], NULL, 0);
-  mysql_free_result (res);
-
-  t->top = offY;
-  t->left = offX;
-  t->bottom = t->top + height - 1;
-  t->right = t->left + width - 1;
-
-  // printf ("bbox[%llu]: top=%d, left=%d, bottom=%d, right=%d\n", tId, t->top, t->left, t->bottom, t->right);
-}
-
-
-static void load_targets_ids (ROWID tId)
-// Load the tId values for all phases of the target defined by given tId
-
-{
-  char query [4096];
-  MYSQL_RES *res;
-  MYSQL_ROW row;
-
-  // We already now one tId keep.
-  tIds [0] = tId;
-  n_tIds = 1;
-
-  while (true)
-    {
-      snprintf (query, 4095, "SELECT next_tId FROM target WHERE tId = %llu", tId);
-      if (mysql_query (con, query))
-	finish_with_error (con);
-
-      res = mysql_store_result (con);
-      if (!res)
-	break;
-
-      row = mysql_fetch_row (res);
-      if (!row || !row [0])
-	break;
-
-      tId = strtoull (row [0], NULL, 0);
-      mysql_free_result (res);
-
-      if (!tId || tId == tIds [0])
-	break;
-
-      tIds [n_tIds++] = tId;
-      if (n_tIds >= 100)
-	break;
-    }
-}
-
-
-static int cost_for (int old_lane, int new_lane)
-
-{
-  int d = new_lane - old_lane;
-
-  // C operator % does not what we want, if LHS < 0
-  while (d < 0)
-    d += nCOSTS;
-
-  return COSTS [d % nCOSTS];
 }
 
 
@@ -371,22 +286,36 @@ static ROWID parent_reaction_of (ROWID rId)
 
   return ret;
 }
+#endif
 
  
 main (int argc, char **argv)
 
 {
-  int i, j, n, xPos, yPos, delay;
-
-  bullets [0].id = 0;
+  char query [4096];
+  int  i, n;
+  trace *t;
 
   config_load (argv [1]);
-assert (MAXPERIOD <= P_MAX);
+  db_init ();
 
-  con = mysql_init(NULL);
-  if (mysql_real_connect (con, DBHOST, DBUSER, DBPASSWD, DBNAME, DBPORT, NULL, 0) == NULL)
-    finish_with_error (con);
+  lab_allocate (MAXWIDTH, MAXHEIGHT, MAXGEN, MAX_FIND);
 
+  // if this fails we need to redefine struct reaction in reaction.h
+  assert (LANES <= UINT8_MAX);
+
+  // ALLOC (target *, tgts, MAXPERIOD)
+
+  // load all standard ships so we can search for them ;)
+  ships = db_load_space_ships ();
+
+  // load all parts we can use for our ship-to-build.
+  bullets = db_load_bullets_for (SHIPNAME);
+  parts = db_load_parts_for (SHIPNAME);
+
+  assert (bullets [1].id == 0);
+
+#if 0
   // Make room for our the ship parts
   MAXWIDTH = PARTWIDTH;
   MAXHEIGHT = PARTHEIGHT;
@@ -418,9 +347,24 @@ assert (MAXPERIOD <= P_MAX);
     }
 // pat_dump (&R1L0 [0], true);
 // exit (0);
+#endif
 
   for (i = 2; i < argc; i++)
     {
+      sprintf (query, SELECT FIRST, strtoull (argv [i], NULL, 0));
+
+      t = follow (query);
+
+      while (t->total_cost > 0)
+	{
+	  sprintf (query, SELECT NEXT, t->tId, LANES, LANES, t->state, t->total_cost-t->cost);
+	  t = follow (query);
+	}
+
+      for (n = n_recipe-1; n >= 0; n--)
+	printf ("#C [%llu]: REPHASE BY %u LANES, DELAY %u TICKS, FIRE %s\n", recipe [n].rId, recipe [n].rephase, recipe [n].delay, recipe [n].p->name);
+
+#if 0
       int delay = 0;
 
       ROWID rId = strtoull (argv [i], NULL, 0);
@@ -474,12 +418,6 @@ assert (MAXPERIOD <= P_MAX);
       pat_dump (&constructor, false);
       printf ("\n");
       // printf ("x = %d, y = %d, rule = B3/S23\n%s\n", W(&constructor), H(&constructor), pat_rle (&constructor));
+#endif
     }
 }
-#else
-main (int argc, char **argv)
-
-{
-  printf ("Sorry. You still have to rewrite this stuff COMPLETELY!\n");
-}
-#endif
