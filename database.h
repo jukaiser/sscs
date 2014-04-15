@@ -18,6 +18,6 @@ ROWID db_target_lookup (uint32_t hash, const char *rle);
 void db_target_reload (target *tgt, ROWID tId, unsigned phase);
 unsigned db_target_fetch (ROWID tId);
 ROWID db_reaction_keep (reaction *r, result *res);
-ROWID db_is_reaction_finished (ROWID tId, unsigned phase, unsigned b, unsigned lane);
+ROWID db_is_reaction_finished (ROWID tId, unsigned phase, unsigned b, unsigned lane, unsigned *cost);
 void db_store_transition (ROWID rId, unsigned old_state, unsigned new_state, unsigned rephase, ROWID pId, unsigned total_cost, unsigned delta_cost);
 void db_store_emit (ROWID rId, unsigned seq, ROWID oId, int offX, int offY, int gen);

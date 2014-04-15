@@ -1020,9 +1020,8 @@ void tgt_center (target *tgt)
 }
 
 
-void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int *fly_y, int *fly_dt)
+void tgt_collide (const target *const tgt, bullet *b, int lane, int *delay, int *fly_x, int *fly_y, int *fly_dt)
 // TO DO: chk 4 overflow!!
-// TO DO: the recipe generator needs to know about our precap elimnation process.
 
 {
   int x, y, dx, dy, dt;
@@ -1071,6 +1070,7 @@ void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int 
       dy /= b->dy;
       x += (dy-3) * b->dx;
       y += (dy-3) * b->dy;
+      *delay = (dy-3) * b->dt;
     }
   else if (b->lane_dx == 0 && b->lane_dy > 0 && dy > 3 && b->dy < 0)
     {
@@ -1078,6 +1078,7 @@ void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int 
       dy /= -b->dy;
       x += (dy-3) * b->dx;
       y += (dy-3) * b->dy;
+      *delay = (dy-3) * b->dt;
     }
   else if (b->lane_dy == 0 && b->lane_dx < 0 && dx > 3 && b->dx > 0)
     {
@@ -1085,6 +1086,7 @@ void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int 
       dx /= b->dx;
       x += (dx-3) * b->dx;
       y += (dx-3) * b->dy;
+      *delay = (dx-3) * b->dt;
     }
   else if (b->lane_dy == 0 && b->lane_dx > 0 && dx > 3 && b->dx < 0)
     {
@@ -1092,6 +1094,7 @@ void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int 
       dx /= -b->dx;
       x += (dx-3) * b->dx;
       y += (dx-3) * b->dy;
+      *delay = (dx-3) * b->dt;
     }
 
   pat_add  (&lab [0], x, y, b->p);

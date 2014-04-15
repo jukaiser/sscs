@@ -18,7 +18,7 @@ CREATE TABLE bullet (
 DROP TABLE IF EXISTS chain;
 DROP TABLE IF EXISTS transition;
 CREATE TABLE transition (
-  trId INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  -- trId INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   rId INT UNSIGNED NOT NULL,			-- reaction.rId
   initial_state TINYINT UNSIGNED NOT NULL,
   result_state TINYINT UNSIGNED NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE transition (
   pId INT UNSIGNED NOT NULL,			-- part.pId
   cost TINYINT UNSIGNED NOT NULL,
   total_cost TINYINT UNSIGNED NOT NULL,
-  KEY (rId, initial_state)
+  PRIMARY KEY (rId, result_state)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1 DATA DIRECTORY = '/home/mysql-gol' INDEX DIRECTORY = '/home/mysql-gol';
 
 DROP TABLE IF EXISTS emitted;
@@ -56,6 +56,7 @@ CREATE TABLE reaction (
   offY TINYINT NOT NULL,
   delay TINYINT UNSIGNED NOT NULL,
   gen SMALLINT UNSIGNED NOT NULL,
+  min_cost TINYINT UNSIGNED NOT NULL,
   result ENUM('dies','fly-by','stable','unfinished', 'explodes','pruned') DEFAULT NULL,
   emits_ships ENUM('false','true') DEFAULT 'false',
   -- cost TINYINT UNSIGNED NOT NULL,

@@ -95,7 +95,7 @@ void lab_allocate (int _maxX, int _maxY, int _maxGen, int _maxFind);
 void lab_init (void);
 
 void tgt_center (target *tgt);
-void tgt_collide (const target *const tgt, bullet *b, int lane, int *fly_x, int *fly_y, int *fly_dt);
+void tgt_collide (const target *const tgt, bullet *b, int lane, int *delay, int *fly_x, int *fly_y, int *fly_dt);
 int  tgt_count_lanes (const target *const tgt, int _b);
 int  tgt_adjust_lane (int _b, target *old, target *new);
 

@@ -38,10 +38,10 @@ char *DBPASSWD    = "";
 char *SQL_F_FETCH_TARGET = "SELECT rle, period FROM target WHERE tId = %llu";
 char *SQL_F_SEARCH_TARGET = "SELECT tId FROM target WHERE hashVal = %u AND rle = '%s'";
 char *SQL_F_STORE_TARGET = "INSERT INTO target (hashVal, rle, period, combined_width, combined_height) VALUES (%u, '%s', %u, %u, %u)";
-char *SQL_F_IS_FINISHED_REACTION = "SELECT rId FROM reaction WHERE initial_tId = %llu AND initial_phase = %u AND bId = %llu AND lane = %u";
+char *SQL_F_IS_FINISHED_REACTION = "SELECT rId, min_cost FROM reaction WHERE initial_tId = %llu AND initial_phase = %u AND bId = %llu AND lane = %u";
 char *SQL_F_STORE_REACTION =
-	"INSERT INTO reaction (initial_tId, initial_phase, bId, lane, lane_adj, result_tId, result_phase, offX, offY, delay, gen, result, emits_ships) "
-		"VALUES (%llu, %u, %llu, %u, %d, %llu, %u, %d, %d, %u, %u, '%s', '%s')";
+	"INSERT INTO reaction (initial_tId, initial_phase, bId, lane, lane_adj, result_tId, result_phase, offX, offY, delay, gen, min_cost, result, emits_ships) "
+		"VALUES (%llu, %u, %llu, %u, %d, %llu, %u, %d, %d, %u, %u, %u, '%s', '%s')";
 char *SQL_F_STORE_TRANSITION =
 	"INSERT INTO transition (rId, initial_state, result_state, rephase, pId, cost, total_cost) "
 		"VALUES (%llu, %u, %u, %u, %llu, %u, %u)";

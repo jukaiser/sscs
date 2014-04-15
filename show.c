@@ -84,7 +84,7 @@ main (int argc, char **argv)
       b.extra_lanes = atoi (row [12]);
       mysql_free_result (result);
 
-      tgt_collide (&t, &b, lane, &dummy, &dummy, &dummy);
+      tgt_collide (&t, &b, lane, &dummy, &dummy, &dummy, &dummy);
       printf ("#P %d 0\n#C reaction: %s\n", (i-2)*200, argv [i]);
       pat_dump (&lab [0], false);
       printf ("\n");

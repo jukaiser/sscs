@@ -86,7 +86,7 @@ assert (first < nph);
     {
       tgts [i]->id = id;
       tgts [i]->phase = mod (i - first, nph);
-if (nph > 2) printf ("id = %llu, first=%u, i=%d, phase=%d, nph=%d\n", tgts [i]->id, first, i, tgts [i]->phase, nph);
+// if (nph > 2) printf ("id = %llu, first=%u, i=%d, phase=%d, nph=%d\n", tgts [i]->id, first, i, tgts [i]->phase, nph);
     }
 }
 
@@ -141,9 +141,10 @@ assert (tgts [phase]->id);
 	    {
 	      // we're preloading!
 	      // Basically this means, that we have NO current state ... and therefore no sensible notion of a "cost".
-	      uint8_t s;
-	      for (s = 0; s < LANES; s++)
-		queue_insert (transition_for (s, j)->cost, tgts [phase]->id, phase, s, b, j);
+	      int p;
+	      for (p = 0; parts [p].pId; p++)
+		if (parts [p].type == pt_rake)
+		  queue_insert (0, tgts [phase]->id, phase, mod (j-parts [p].lane_fired, LANES), b, j);
 	    }
 	}
     }
@@ -262,13 +263,13 @@ static void stabilizes (reaction *r, target *old, int i, int p, result *res)
   res->offX = new->left-old->left;
   res->offY = new->top-old->top;
   res->gen = i;
-  res->lane_adj -= tgt_adjust_lane (r->b, old, new);
+  res->lane_adj = tgt_adjust_lane (r->b, old, new);
   res->type = rt_stable;
 
   // build all possible reactions for these targets and queue them for later analysis.
   int state = r->state;
   state += transition_for (r->state, r->lane)->d_state;
-  state += res->lane_adj;
+  state -= res->lane_adj;
   state = mod (state, LANES);
   build_reactions (p, r->b, false, r->cost, state);
   free_targets ();
@@ -315,7 +316,11 @@ bool run (reaction *r, target *tgt, result *res)
 
   // Build new collision defined by our reaction -> lab [0], reinitializing lab, tgt and n_emitted
   lab_init ();
-  tgt_collide (tgt, &bullets [r->b], r->lane, &flyX, &flyY, &flyGen);
+  tgt_collide (tgt, &bullets [r->b], r->lane, &res->delay, &flyX, &flyY, &flyGen);
+  if (tgt->nph == 1)
+    res->delay = 0;
+  else
+    res->delay = mod (r->phase - res->delay, tgt->nph);
   n_emitted = 0;
   res->emits = false;
 
@@ -430,6 +435,7 @@ void handle (reaction *r)
   target tgt;
   bool   re_fly = false;
   int    i;
+  unsigned cost;
   ROWID  rId;
   transition *t;
 
@@ -440,11 +446,13 @@ void handle (reaction *r)
   // Since we are queueing reactions in order of least cost we are able to check this.
   // NOTE: since "re-flying" is handled immediately, we only have to check this for the very
   //	   first pass.
-  rId = db_is_reaction_finished (r->tId, r->phase, r->b, r->lane);
+  rId = db_is_reaction_finished (r->tId, r->phase, r->b, r->lane, &cost);
   if (rId)
     {
       t = transition_for (r->state, r->lane);
-      db_store_transition (rId, r->state, r->state+t->d_state, t->rephase_by, parts [t->fire].pId, r->cost, t->cost);
+      assert (cost <= r->cost);
+      if (cost == r->cost)
+	db_store_transition (rId, r->state, mod (r->state+t->d_state, 31), t->rephase_by, parts [t->fire].pId, r->cost, t->cost);
       return;
     }
 
@@ -463,7 +471,7 @@ void handle (reaction *r)
   // Store our reaction, now that we know everything about it!
   rId = db_reaction_keep (r, &res);
   t = transition_for (r->state, r->lane);
-  db_store_transition (rId, r->state, r->state+t->d_state, t->rephase_by, parts [t->fire].pId, r->cost, t->cost);
+  db_store_transition (rId, r->state, mod (r->state+t->d_state, 31), t->rephase_by, parts [t->fire].pId, r->cost, t->cost);
 
   // If we emitted any ships then store them.
   // Note that we want *relative* postions for our DB!
@@ -540,6 +548,6 @@ void init_reactions (void)
 
   calc_transitions (0, 0);
 
-  for (l = 0; l < LANES; l++)
-    printf ("dLane = %d: cost=%d, firing=%s, state=%d\n", l, t_table [l].cost, parts [t_table [l].fire].name, t_table [l].d_state);
+  // for (l = 0; l < LANES; l++)
+    // printf ("dLane = %d: cost=%d, firing=%s, state=%d\n", l, t_table [l].cost, parts [t_table [l].fire].name, t_table [l].d_state);
 }

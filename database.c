@@ -414,7 +414,7 @@ assert (&ret [i] == (ret [i].base + ret [i].phase));
 }
 
 
-ROWID db_is_reaction_finished (ROWID tId, unsigned phase, unsigned b, unsigned lane)
+ROWID db_is_reaction_finished (ROWID tId, unsigned phase, unsigned b, unsigned lane, unsigned *cost)
 
 {
   char query [4096];
@@ -434,7 +434,10 @@ ROWID db_is_reaction_finished (ROWID tId, unsigned phase, unsigned b, unsigned l
     finish_with_error (con);
 
   if (row && row [0])
-    ret = strtoull (row [0], NULL, 0);
+    {
+      ret = strtoull (row [0], NULL, 0);
+      *cost = atoi (row [1]);
+    }
 
   mysql_free_result (result);
 
@@ -475,7 +478,7 @@ ROWID db_reaction_keep (reaction *r, result *res)
     }
 
   snprintf (query, 4095, SQL_F_STORE_REACTION, r->tId, r->phase, bullets [r->b].id, r->lane, res->lane_adj, res->result_tId, res->result_phase,
-	    res->offX, res->offY, res->delay, res->gen, t, (res->emits?"true":"false"));
+	    res->offX, res->offY, res->delay, res->gen, r->cost, t, (res->emits?"true":"false"));
 
   if (__dbg_query (con, query))
     {
