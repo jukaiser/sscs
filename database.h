@@ -11,7 +11,7 @@ void db_init (void);
 
 object *db_load_space_ships (void);
 bullet *db_load_bullets_for (const char *shipname);
-part *db_load_parts_for (const char *shipname);
+part *db_load_parts_for (const char *shipname, bool complete, unsigned nr_phases, int baseX, int baseY);
 
 ROWID db_target_store (uint32_t hash, const char *rle, unsigned nph, unsigned width, unsigned height);
 ROWID db_target_lookup (uint32_t hash, const char *rle);

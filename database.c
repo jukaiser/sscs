@@ -211,13 +211,13 @@ bullet *db_load_bullets_for (const char *shipname)
 }
 
 
-part *db_load_parts_for (const char *shipname)
+part *db_load_parts_for (const char *shipname, bool complete, unsigned nr_phases, int baseX, int baseY)
 // Load the parts we could use for the given SHIP.
 
 {
   part *ret;
   char query [4096];
-  int n, i;
+  int n, i, p;
 
   snprintf (query, 4095, SQL_COUNT_PARTS, shipname);
 
@@ -244,7 +244,7 @@ part *db_load_parts_for (const char *shipname)
 
   ALLOC(part,ret,n+1)
 
-  snprintf (query, 4095, SQL_F_PARTS, shipname);
+  snprintf (query, 4095, complete ? SQL_F_PARTS_COMPLETE : SQL_F_PARTS, shipname);
   if (__dbg_query (con, query))
     finish_with_error (con);
 
@@ -283,8 +283,33 @@ part *db_load_parts_for (const char *shipname)
       else
 	ret [i].b = -1;
       ret [i].cost = atoi (row [6]);
-    }
 
+      // Does our caller really want all them fields? Especially the rle/pattern??
+      if (complete)
+	{
+	  ALLOC(target, ret [i].pats, nr_phases+1);
+	  pat_from_string (row [7]);
+	  ret [i].dx = atoi (row [8]);
+	  ret [i].dy = atoi (row [9]);
+	  ret [i].pats [0].pat = pat_compact (&lab [0], NULL);
+	  ret [i].pats [0].X = baseX + atoi (row [10]);
+	  ret [i].pats [0].Y = baseY + atoi (row [11]);
+	  if (ret [i].type == pt_rake)
+	    {
+	      pat_fill (&lab [0], DEAD);
+	      pat_copy (&lab [0], ret [i].pats [0].X, ret [i].pats [0].Y, ret [i].pats [0].pat);
+	      for (p = 0; p < nr_phases; p++)
+		{
+		  pat_generate (&lab [p], &lab [p+1]);
+		  ret [i].pats [p+1].pat = pat_compact (&lab [p+1], NULL);
+		  ret [i].pats [p+1].X = lab [p+1].left;
+		  ret [i].pats [p+1].Y = lab [p+1].top;
+		}
+	      ret [i].fireX = baseX + atoi (row [12]);
+	      ret [i].fireY = baseY + atoi (row [13]);
+	    }
+	}
+    }
 
   ret [n].pId = 0;
   ret [n].name = NULL;

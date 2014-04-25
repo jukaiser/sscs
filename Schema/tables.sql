@@ -108,8 +108,8 @@ CREATE TABLE part (
   dy SMALLINT UNSIGNED,
   offX TINYINT,
   offY TINYINT,
-  fireX TINYINT UNSIGNED,
-  fireY TINYINT UNSIGNED,
+  fireX SMALLINT UNSIGNED,
+  fireY SMALLINT UNSIGNED,
   type ENUM('track','rephaser','rake') NOT NULL,
   lane_adjust TINYINT UNSIGNED,
   bId INT UNSIGNED,				-- bullet.bId

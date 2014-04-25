@@ -71,5 +71,6 @@ extern char *SQL_COUNT_BULLETS;
 extern char *SQL_F_BULLETS;
 extern char *SQL_COUNT_PARTS;
 extern char *SQL_F_PARTS;
+extern char *SQL_F_PARTS_COMPLETE;
 
 void config_load (const char *cfg_name);

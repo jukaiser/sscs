@@ -1096,6 +1096,8 @@ void tgt_collide (const target *const tgt, bullet *b, int lane, int *delay, int 
       y += (dx-3) * b->dy;
       *delay = (dx-3) * b->dt;
     }
+  else
+    *delay = 0;
 
   pat_add  (&lab [0], x, y, b->p);
   // pat_envelope (&lab [0]);

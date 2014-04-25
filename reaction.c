@@ -36,6 +36,12 @@ uint8_t mod (int value, int divisor)
 // C operator % does not what we want, if LHS < 0
 
 {
+  // Sanity. Avoid Division by zero and negative divisors:
+  // Plus: x mod 1 == 0 ...
+  assert (divisor > 0);
+  if (divisor <= 1)
+    return 0;
+
   // C operator % does not what we want, if LHS < 0
   while (value < 0)
     value += divisor;
@@ -528,7 +534,7 @@ void init_reactions (void)
 
   // load all parts we can use for our ship-to-build.
   bullets = db_load_bullets_for (SHIPNAME);
-  parts = db_load_parts_for (SHIPNAME);
+  parts = db_load_parts_for (SHIPNAME, false, 0, 0, 0);
 
   assert (bullets [1].id == 0);
   /*

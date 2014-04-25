@@ -54,6 +54,7 @@ char *SQL_F_BULLETS =
 		"FROM bullet b LEFT JOIN object USING (oId) WHERE b.bId IN (SELECT bId FROM part WHERE ship_name = '%s')";
 char *SQL_COUNT_PARTS = "SELECT COUNT(*) FROM part WHERE ship_name = '%s'";
 char *SQL_F_PARTS = "SELECT pId, part_name, type, lane_adjust, bId, lane_fired, cost FROM part WHERE ship_name = '%s'";
+char *SQL_F_PARTS_COMPLETE = "SELECT pId, part_name, type, lane_adjust, bId, lane_fired, cost, rle, dx, dy, offX, offY, fireX, fireY FROM part WHERE ship_name = '%s'";
 
 
 // <- config.h
@@ -108,6 +109,7 @@ static cfg_var config [] =
     {"SQL_COUNT_BULLETS",	   STRING,  &SQL_COUNT_BULLETS},
     {"SQL_F_BULLETS",		   STRING,  &SQL_F_BULLETS},
     {"SQL_COUNT_PARTS",		   STRING,  &SQL_COUNT_PARTS},
+    {"SQL_F_PARTS_COMPLETE",	   STRING,  &SQL_F_PARTS_COMPLETE},
     {"SQL_F_PARTS",		   STRING,  &SQL_F_PARTS},
     {NULL}
   };

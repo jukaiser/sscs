@@ -21,6 +21,11 @@ typedef struct
     unsigned	  lane_fired;
     int		  b;		// index in bullets [] for part.bId
     unsigned	  cost;
+
+    // fields needed by recipe generator -- uninitialised if loaded from sscs::reaction.c!!
+    target	  *pats;
+    unsigned	  dx, dy;
+    unsigned	  fireX, fireY;
   } part;
 
 typedef enum {rt_undef, rt_dies, rt_flyby, rt_stable, rt_pruned, rt_unfinished} reaction_type;
@@ -44,3 +49,6 @@ void reaction_targets_keep (int nph);
 void free_targets (void);
 void handle (reaction *r);
 void init_reactions (void);
+
+// TODO: move to some place like util.c??
+uint8_t mod (int value, int divisor);
