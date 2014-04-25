@@ -25,8 +25,10 @@
 
 #define SELECT "SELECT reaction.rId, initial_tId, 240-gen+result_phase, period, bId, lane, initial_state, rephase, delay, pId, cost, total_cost " \
 			"FROM transition LEFT JOIN reaction USING (rId) LEFT JOIN target ON (initial_tId = tId) "
-#define FIRST  "WHERE rId = %llu ORDER BY cost DESC LIMIT 1"
-#define NEXT   "WHERE result_tId = %llu AND (result_state+%u-lane_adj)%%%u = %u AND total_cost = %u ORDER BY cost DESC LIMIT 1"
+// #define FIRST  "WHERE rId = %llu ORDER BY cost DESC LIMIT 1"
+// #define NEXT   "WHERE result_tId = %llu AND (result_state+%u-lane_adj)%%%u = %u AND total_cost = %u ORDER BY cost DESC LIMIT 1"
+#define FIRST  "WHERE rId = %llu ORDER BY cost ASC LIMIT 1"
+#define NEXT   "WHERE result_tId = %llu AND (result_state+%u-lane_adj)%%%u = %u AND total_cost = %u ORDER BY cost ASC LIMIT 1"
 
 
 typedef struct
@@ -183,6 +185,7 @@ main (int argc, char **argv)
 
       sprintf (query, SELECT FIRST, strtoull (argv [i], NULL, 0));
 
+      n_recipe = 0;
       t = follow (query);
 
       while (t->total_cost > 0)
@@ -193,7 +196,7 @@ main (int argc, char **argv)
       db_target_reload (&tgt, t->tId, 0);
 
       // Write recipe in the header.
-      printf ("#P %lu 0\n", stampY);
+      printf ("#P 0 %lu\n", stampY);
       for (n = n_recipe-1; n >= 0; n--)
 	{
 	  delay += recipe [n].delay;
@@ -213,7 +216,7 @@ main (int argc, char **argv)
       // Construct demo.
       pat_init (&constructor);
       pos = 0;
-      for (n = 0; n < recipe [0].total_cost*SHIP_MAGIC_SZ; n++)
+      for (n = 0; n < (recipe [0].total_cost+5)*SHIP_MAGIC_SZ; n++)
 	{
 	  pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
 	  pos += track->dy;
@@ -232,12 +235,18 @@ main (int argc, char **argv)
 	  target *pt = &p->pats [period - recipe [n].delay];
 	  pat_add (&constructor, pt->X, pos+pt->Y, pt->pat);
 
-// TODO: MAGIC 8
 	  if (n == n_recipe-1)
+{
+fprintf (stderr, "(%d,%d)\n", pt->X, pt->Y);
+fprintf (stderr, "[%d,%d]\n", p->fireX, p->fireY);
+fprintf (stderr, "{%d,%d} - {%d,%d}\n", tgt.X, tgt.Y, tgt.left, tgt.bottom);
+fprintf (stderr, "X: %d+%d - (%d*%d) - %d + %d-%d -> %d\n", pt->X, p->fireX, recipe [n].lane, bullets [0].lane_dx, bullets [0].base_x, tgt.X, tgt.left, pt->X+p->fireX-(recipe [n].lane*bullets [0].lane_dx)-bullets [0].base_x+tgt.X-tgt.left);
+fprintf (stderr, "MAGIC: %d, %d\n", (period*bullets [0].dx/bullets [0].dt), (period*bullets [0].dy/bullets [0].dt));
 	    pat_add (&constructor,
-		     p->fireX+8-bullets [0].base_x+tgt.X-tgt.left,
-		     pos+(recipe [n].lane*bullets [0].lane_dy)+p->fireY+8-bullets [0].base_y+tgt.Y-tgt.bottom,
+		     pt->X+p->fireX+(period*bullets [0].dx/bullets [0].dt)-(recipe [n].lane*bullets [0].lane_dx)-bullets [0].base_x+tgt.X-tgt.left,
+		     pos+pt->Y+p->fireY+(period*bullets [0].dy/bullets [0].dt)-(recipe [n].lane*bullets [0].lane_dy)-bullets [0].base_y+tgt.Y-tgt.bottom,
 		     tgt.pat);
+}
 
 	  pos += p->dy;
 /*
@@ -250,6 +259,6 @@ main (int argc, char **argv)
 
       // ... and show it.
       pat_dump (&constructor, false);
-      stampY += (2000UL + (unsigned long)pos) % 1000UL;
+      stampY += 1000UL * (2UL + (unsigned long)pos / 1000UL);
     }
 }
