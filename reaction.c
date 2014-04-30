@@ -33,7 +33,7 @@ transition *t_table = NULL;
 
 
 uint8_t mod (int value, int divisor)
-// C operator % does not what we want, if LHS < 0
+// C operator % does not do what we want, if LHS < 0
 
 {
   // Sanity. Avoid Division by zero and negative divisors:
@@ -42,7 +42,7 @@ uint8_t mod (int value, int divisor)
   if (divisor <= 1)
     return 0;
 
-  // C operator % does not what we want, if LHS < 0
+  // We do not like negative values here!
   while (value < 0)
     value += divisor;
 
@@ -266,6 +266,7 @@ static void stabilizes (reaction *r, target *old, int i, int p, result *res)
   // remember our success
   target *new = tgts [0];
   res->result_tId = new->id;
+  res->result_phase = new->phase;	// U.Kaiser, 30.04.2014 - DARN!
   res->offX = new->left-old->left;
   res->offY = new->top-old->top;
   res->gen = i;

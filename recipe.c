@@ -23,12 +23,12 @@
 #define MAXPARTS   100
 
 
-#define SELECT "SELECT reaction.rId, initial_tId, 240-gen+result_phase, period, bId, lane, initial_state, rephase, delay, pId, cost, total_cost " \
+#define SELECT "SELECT reaction.rId, initial_tId, %u-gen-result_phase, period, bId, lane, initial_state, rephase, delay, pId, cost, total_cost " \
 			"FROM transition LEFT JOIN reaction USING (rId) LEFT JOIN target ON (initial_tId = tId) "
 // #define FIRST  "WHERE rId = %llu ORDER BY cost DESC LIMIT 1"
 // #define NEXT   "WHERE result_tId = %llu AND (result_state+%u-lane_adj)%%%u = %u AND total_cost = %u ORDER BY cost DESC LIMIT 1"
 #define FIRST  "WHERE rId = %llu ORDER BY cost ASC LIMIT 1"
-#define NEXT   "WHERE result_tId = %llu AND (result_state+%u-lane_adj)%%%u = %u AND total_cost = %u ORDER BY cost ASC LIMIT 1"
+#define NEXT   "WHERE result_tId = %llu AND (result_state+3*%u-lane_adj)%%%u = %u AND total_cost = %u ORDER BY cost ASC LIMIT 1"
 
 
 typedef struct
@@ -123,6 +123,8 @@ trace *follow (const char *q)
 
   mysql_free_result (result);
 
+fprintf (stderr, "%llu: %d [%d]\n", t->rId, t->phase, mod (t->phase, t->period));
+
   return t;
 }
 
@@ -151,7 +153,9 @@ main (int argc, char **argv)
   // if this fails we need to redefine struct reaction in reaction.h
   assert (LANES <= UINT8_MAX);
 
-  // ALLOC (target *, tgts, MAXPERIOD)
+  // FIXME: The way we construct the ship from the parts only works if it is moving NORTH!
+  assert (!DX);
+  assert (DY < 0);
 
   // load all standard ships so we can search for them ;)
   ships = db_load_space_ships ();
@@ -183,14 +187,14 @@ main (int argc, char **argv)
     {
       int delay = 0;
 
-      sprintf (query, SELECT FIRST, strtoull (argv [i], NULL, 0));
+      sprintf (query, SELECT FIRST, DT, strtoull (argv [i], NULL, 0));
 
       n_recipe = 0;
       t = follow (query);
 
       while (t->total_cost > 0)
 	{
-	  sprintf (query, SELECT NEXT, t->tId, LANES, LANES, t->state, t->total_cost-t->cost);
+	  sprintf (query, SELECT NEXT, DT, t->tId, LANES, LANES, t->state, t->total_cost-t->cost);
 	  t = follow (query);
 	}
       db_target_reload (&tgt, t->tId, 0);
@@ -199,11 +203,14 @@ main (int argc, char **argv)
       printf ("#P 0 %lu\n", stampY);
       for (n = n_recipe-1; n >= 0; n--)
 	{
+/*
 	  delay += recipe [n].delay;
 	  if (n < n_recipe-1)
 	    delay -= recipe [n+1].phase;
 	  delay = mod (delay, recipe [n].period);
 	  recipe [n].delay = delay;
+*/
+	  delay = mod (recipe [n].delay, recipe [n].period);
 
 	  printf ("#C [%llu]: ", recipe [n].rId);
 	  if (recipe [n].rephase)
@@ -221,6 +228,7 @@ main (int argc, char **argv)
 	  pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
 	  pos += track->dy;
 	}
+
       for (n = n_recipe-1; n >= 0; n--)
 	{
 	  int phase = recipe [n].rephase;
@@ -231,22 +239,20 @@ main (int argc, char **argv)
 	      phase = (LANES + phase - rephaser->lane_adjust) % LANES;
 	    }
 
+	  pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
+	  pos += track->dy;
+
 	  part *p = recipe [n].p;
 	  target *pt = &p->pats [period - recipe [n].delay];
 	  pat_add (&constructor, pt->X, pos+pt->Y, pt->pat);
 
 	  if (n == n_recipe-1)
-{
-fprintf (stderr, "(%d,%d)\n", pt->X, pt->Y);
-fprintf (stderr, "[%d,%d]\n", p->fireX, p->fireY);
-fprintf (stderr, "{%d,%d} - {%d,%d}\n", tgt.X, tgt.Y, tgt.left, tgt.bottom);
-fprintf (stderr, "X: %d+%d - (%d*%d) - %d + %d-%d -> %d\n", pt->X, p->fireX, recipe [n].lane, bullets [0].lane_dx, bullets [0].base_x, tgt.X, tgt.left, pt->X+p->fireX-(recipe [n].lane*bullets [0].lane_dx)-bullets [0].base_x+tgt.X-tgt.left);
-fprintf (stderr, "MAGIC: %d, %d\n", (period*bullets [0].dx/bullets [0].dt), (period*bullets [0].dy/bullets [0].dt));
-	    pat_add (&constructor,
-		     pt->X+p->fireX+(period*bullets [0].dx/bullets [0].dt)-(recipe [n].lane*bullets [0].lane_dx)-bullets [0].base_x+tgt.X-tgt.left,
-		     pos+pt->Y+p->fireY+(period*bullets [0].dy/bullets [0].dt)-(recipe [n].lane*bullets [0].lane_dy)-bullets [0].base_y+tgt.Y-tgt.bottom,
-		     tgt.pat);
-}
+	    {
+	      int tgtX = p->fireX     + (period*bullets [0].dx/bullets [0].dt) - bullets [0].base_x - (recipe [n].lane*bullets [0].lane_dx) + tgt.X-tgt.left;
+	      int tgtY = pos+p->fireY + (period*bullets [0].dy/bullets [0].dt) - bullets [0].base_y - (recipe [n].lane*bullets [0].lane_dy) + tgt.Y-tgt.bottom;
+	      for (; tgtY > 0; tgtY += DY)
+	        pat_add (&constructor, tgtX, tgtY, tgt.pat);
+	    }
 
 	  pos += p->dy;
 /*
