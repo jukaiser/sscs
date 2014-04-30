@@ -36,7 +36,6 @@ typedef struct
     int		  offX;
     int		  offY;
     int		  gen;
-    int		  delay;
     int		  lane_adj;
     bool	  emits;
     reaction_type type;

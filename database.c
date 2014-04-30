@@ -503,7 +503,7 @@ ROWID db_reaction_keep (reaction *r, result *res)
     }
 
   snprintf (query, 4095, SQL_F_STORE_REACTION, r->tId, r->phase, bullets [r->b].id, r->lane, res->lane_adj, res->result_tId, res->result_phase,
-	    res->offX, res->offY, res->delay, res->gen, r->cost, t, (res->emits?"true":"false"));
+	    res->offX, res->offY, res->gen, r->cost, t, (res->emits?"true":"false"));
 
   if (__dbg_query (con, query))
     {

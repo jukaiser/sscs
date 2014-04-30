@@ -54,7 +54,6 @@ CREATE TABLE reaction (
   result_phase TINYINT UNSIGNED NOT NULL,
   offX TINYINT NOT NULL,
   offY TINYINT NOT NULL,
-  delay TINYINT UNSIGNED NOT NULL,
   gen SMALLINT UNSIGNED NOT NULL,
   min_cost TINYINT UNSIGNED NOT NULL,
   result ENUM('dies','fly-by','stable','unfinished', 'explodes','pruned') DEFAULT NULL,

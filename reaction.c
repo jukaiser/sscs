@@ -319,15 +319,18 @@ static int search_ships (reaction *r, target *tgt, int gen, result *res)
 bool run (reaction *r, target *tgt, result *res)
 
 {
-  int flyX, flyY, flyGen, i, p;
+  int flyX, flyY, flyGen, i, p, dummy;
 
   // Build new collision defined by our reaction -> lab [0], reinitializing lab, tgt and n_emitted
   lab_init ();
+  tgt_collide (tgt, &bullets [r->b], r->lane, &dummy, &flyX, &flyY, &flyGen);
+/* NOTE: keeping the pre gap from tgt_collide () is currently pointless, since tgt_collide () does not adjust the phase of the target anyway!
   tgt_collide (tgt, &bullets [r->b], r->lane, &res->delay, &flyX, &flyY, &flyGen);
   if (tgt->nph == 1)
     res->delay = 0;
   else
     res->delay = mod (res->delay, tgt->nph);
+*/
   n_emitted = 0;
   res->emits = false;
 
