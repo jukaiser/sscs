@@ -23,7 +23,7 @@
 #define MAXPARTS   100
 
 
-#define SELECT "SELECT reaction.rId, initial_tId, %u-gen-result_phase, period, bId, lane, initial_state, rephase, delay, pId, cost, total_cost " \
+#define SELECT "SELECT reaction.rId, initial_tId, %u+gen-result_phase, period, bId, lane, initial_state, rephase, delay, pId, cost, total_cost " \
 			"FROM transition LEFT JOIN reaction USING (rId) LEFT JOIN target ON (initial_tId = tId) "
 // #define FIRST  "WHERE rId = %llu ORDER BY cost DESC LIMIT 1"
 // #define NEXT   "WHERE result_tId = %llu AND (result_state+%u-lane_adj)%%%u = %u AND total_cost = %u ORDER BY cost DESC LIMIT 1"
@@ -123,8 +123,6 @@ trace *follow (const char *q)
 
   mysql_free_result (result);
 
-fprintf (stderr, "%llu: %d [%d]\n", t->rId, t->phase, mod (t->phase, t->period));
-
   return t;
 }
 
@@ -152,10 +150,6 @@ main (int argc, char **argv)
 
   // if this fails we need to redefine struct reaction in reaction.h
   assert (LANES <= UINT8_MAX);
-
-  // FIXME: The way we construct the ship from the parts only works if it is moving NORTH!
-  assert (!DX);
-  assert (DY < 0);
 
   // load all standard ships so we can search for them ;)
   ships = db_load_space_ships ();
@@ -203,14 +197,11 @@ main (int argc, char **argv)
       printf ("#P 0 %lu\n", stampY);
       for (n = n_recipe-1; n >= 0; n--)
 	{
-/*
-	  delay += recipe [n].delay;
-	  if (n < n_recipe-1)
-	    delay -= recipe [n+1].phase;
-	  delay = mod (delay, recipe [n].period);
+	  if (n == n_recipe-1)
+	    delay = mod (recipe [n].delay, recipe [n].period);
+	  else
+	    delay = mod (delay + recipe [n+1].phase - recipe [n].delay, recipe [n].period);	// TODO: Check for P>2!!!!
 	  recipe [n].delay = delay;
-*/
-	  delay = mod (recipe [n].delay, recipe [n].period);
 
 	  printf ("#C [%llu]: ", recipe [n].rId);
 	  if (recipe [n].rephase)
