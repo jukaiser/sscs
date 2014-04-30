@@ -23,7 +23,7 @@
 #define MAXPARTS   100
 
 
-#define SELECT "SELECT reaction.rId, initial_tId, %u+gen-result_phase, period, bId, lane, initial_state, rephase, delay, pId, cost, total_cost " \
+#define SELECT "SELECT reaction.rId, initial_tId, %u+gen-result_phase, period, bId, lane, initial_state, rephase, initial_phase, pId, cost, total_cost " \
 			"FROM transition LEFT JOIN reaction USING (rId) LEFT JOIN target ON (initial_tId = tId) "
 // #define FIRST  "WHERE rId = %llu ORDER BY cost DESC LIMIT 1"
 // #define NEXT   "WHERE result_tId = %llu AND (result_state+%u-lane_adj)%%%u = %u AND total_cost = %u ORDER BY cost DESC LIMIT 1"
@@ -200,7 +200,11 @@ main (int argc, char **argv)
 	  if (n == n_recipe-1)
 	    delay = mod (recipe [n].delay, recipe [n].period);
 	  else
-	    delay = mod (delay + recipe [n+1].phase - recipe [n].delay, recipe [n].period);	// TODO: Check for P>2!!!!
+{
+fprintf (stderr, "delay = mod (%d - %d - %d, %d) =", recipe [n+1].phase, delay, recipe [n].delay, recipe [n].period);
+	    delay = mod (recipe [n+1].phase - delay - recipe [n].delay, recipe [n].period);
+fprintf (stderr, "%d\n", delay);
+}
 	  recipe [n].delay = delay;
 
 	  printf ("#C [%llu]: ", recipe [n].rId);

@@ -19,7 +19,7 @@ main (int argc, char **argv)
   bullet b;
   int phase, lane, nph;
   target t;
-  int i, dummy, offX, offY, width, height;
+  int i, delay, dummy, offX, offY, width, height;
   MYSQL_RES *result;
   MYSQL_ROW row;
 
@@ -84,7 +84,8 @@ main (int argc, char **argv)
       b.extra_lanes = atoi (row [12]);
       mysql_free_result (result);
 
-      tgt_collide (&t, &b, lane, &dummy, &dummy, &dummy, &dummy);
+      tgt_collide (&t, &b, lane, &delay, &dummy, &dummy, &dummy);
+// fprintf (stderr, "PRE GAP: %d\n", delay);
       printf ("#P %d 0\n#C reaction: %s\n", (i-2)*200, argv [i]);
       pat_dump (&lab [0], false);
       printf ("\n");

@@ -327,7 +327,7 @@ bool run (reaction *r, target *tgt, result *res)
   if (tgt->nph == 1)
     res->delay = 0;
   else
-    res->delay = mod (r->phase - res->delay, tgt->nph);
+    res->delay = mod (res->delay, tgt->nph);
   n_emitted = 0;
   res->emits = false;
 
