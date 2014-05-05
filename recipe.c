@@ -150,9 +150,9 @@ main (int argc, char **argv)
   unsigned period;
 
   
-  if (argc == 3 && argv [1][0] != '-')
+  if (argc >= 3 && argv [1][0] != '-')
     firstArg = 1;
-  else if (argc == 4 && strcmp (argv [1], "--demo") == 0)
+  else if (argc >= 4 && strcmp (argv [1], "--demo") == 0)
     {
       with_demo = true;
       firstArg = 2;
