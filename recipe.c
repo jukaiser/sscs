@@ -143,7 +143,7 @@ main (int argc, char **argv)
 {
   char query [4096];
   int  i, n, pos, firstArg;
-  unsigned long stampY = 0UL;
+  unsigned long stampX = 0UL;
   trace *first;
   part *track = NULL, *rephaser = NULL;
   target tgt;
@@ -215,7 +215,7 @@ main (int argc, char **argv)
 	}
 
       // Write recipe in the header.
-      printf ("#P 0 %lu\n", stampY);
+      printf ("#P %lu 0\n", stampX);
       db_target_reload (&tgt, first->tId, first->iPhase);
       tgt_collide (&tgt, &bullets [0], first->lane, &dummy, &dummy, &dummy, &dummy);
       printf ("#C Start-RLE: %s\n", pat_rle (&lab [0]));
@@ -283,7 +283,7 @@ main (int argc, char **argv)
 
 	  // ... and show it.
 	  pat_dump (&constructor, false);
-	  stampY += 1000UL * (2UL + (unsigned long)pos / 1000UL);
+	  stampX += PARTWIDTH;
 	}
       else
 	{
@@ -291,7 +291,7 @@ main (int argc, char **argv)
 	  tgt_collide (&tgt, &bullets [0], recipe [0].lane, &dummy, &dummy, &dummy, &dummy);
 	  pat_dump (&lab [0], false);
 	  printf ("\n");
-	  stampY += 200;
+	  stampX += 200;
 	}
     }
 }
