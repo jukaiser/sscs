@@ -34,7 +34,7 @@
 typedef struct
   {
     ROWID rId, tId;
-    int	  phase;
+    int	  rPhase, iPhase;
     int   period;
     ROWID bId;
     int   lane;
@@ -52,6 +52,7 @@ static int n_recipe = 0;
 static object *ships = NULL;
 static part *parts = NULL;
 static pattern constructor;
+static bool with_demo = false;
 
 
 uint8_t mod (int value, int divisor)
@@ -110,13 +111,14 @@ trace *follow (const char *q)
   t = &recipe [n_recipe++];
   t->rId        = strtoull (row [0], NULL, 0);
   t->tId        = strtoull (row [1], NULL, 0);
-  t->phase      = atoi (row [2]);
+  t->rPhase     = atoi (row [2]);
   t->period     = atoi (row [3]);
   t->bId        = strtoull (row [4], NULL, 0);
   t->lane       = atoi (row [5]);
   t->state      = atoi (row [6]);
   t->rephase    = atoi (row [7]);
-  t->delay      = atoi (row [8]);
+  t->iPhase     = atoi (row [8]);
+  t->delay      = 0;
   t->p          = find_part (strtoull (row [9], NULL, 0));
   t->cost       = atoi (row [10]);
   t->total_cost = atoi (row [11]);
@@ -127,18 +129,38 @@ trace *follow (const char *q)
 }
 
 
+static void Usage (const char *argv0)
+
+{
+  fprintf (stderr, "Usage: %s <configfile> <rId> [<rId> ...]\n\n\tDump the recipe for the given reaction[s].\n\n", argv0);
+  fprintf (stderr, "Usage: %s --demo <configfile> <rId> [<rId> ...]\n\n\tDump the recipe for the given reaction[s] including a complete demo for the construction.\n\n", argv0);
+  exit (1);
+}
+
+
 main (int argc, char **argv)
 
 {
   char query [4096];
-  int  i, n, pos;
+  int  i, n, pos, firstArg;
   unsigned long stampY = 0UL;
-  trace *t;
+  trace *first;
   part *track = NULL, *rephaser = NULL;
   target tgt;
   unsigned period;
 
-  config_load (argv [1]);
+  
+  if (argc == 3 && argv [1][0] != '-')
+    firstArg = 1;
+  else if (argc == 4 && strcmp (argv [1], "--demo") == 0)
+    {
+      with_demo = true;
+      firstArg = 2;
+    }
+  else
+    Usage (argv [0]);
+
+  config_load (argv [firstArg++]);
   db_init ();
 
   MAXWIDTH = PARTWIDTH;
@@ -177,34 +199,32 @@ main (int argc, char **argv)
   assert (track->dx == 0);
   assert (track->dy > 0);	// NYI: only northbound ships please
 
-  for (i = 2; i < argc; i++)
+  for (i = firstArg; i < argc; i++)
     {
-      int delay = 0;
+      int delay = 0, dummy;
 
       sprintf (query, SELECT FIRST, DT, strtoull (argv [i], NULL, 0));
 
       n_recipe = 0;
-      t = follow (query);
+      first = follow (query);
 
-      while (t->total_cost > 0)
+      while (first->total_cost > 0)
 	{
-	  sprintf (query, SELECT NEXT, DT, t->tId, LANES, LANES, t->state, t->total_cost-t->cost);
-	  t = follow (query);
+	  sprintf (query, SELECT NEXT, DT, first->tId, LANES, LANES, first->state, first->total_cost-first->cost);
+	  first = follow (query);
 	}
-      db_target_reload (&tgt, t->tId, 0);
 
       // Write recipe in the header.
       printf ("#P 0 %lu\n", stampY);
+      db_target_reload (&tgt, first->tId, first->iPhase);
+      tgt_collide (&tgt, &bullets [0], first->lane, &dummy, &dummy, &dummy, &dummy);
+      printf ("#C Start-RLE: %s\n", pat_rle (&lab [0]));
       for (n = n_recipe-1; n >= 0; n--)
 	{
 	  if (n == n_recipe-1)
-	    delay = mod (recipe [n].delay, recipe [n].period);
+	    delay = mod (recipe [n].iPhase, recipe [n].period);
 	  else
-{
-fprintf (stderr, "delay = mod (%d - %d - %d, %d) =", recipe [n+1].phase, delay, recipe [n].delay, recipe [n].period);
-	    delay = mod (recipe [n+1].phase - delay - recipe [n].delay, recipe [n].period);
-fprintf (stderr, "%d\n", delay);
-}
+	    delay = mod (recipe [n+1].rPhase - delay - recipe [n].iPhase, recipe [n].period);
 	  recipe [n].delay = delay;
 
 	  printf ("#C [%llu]: ", recipe [n].rId);
@@ -216,50 +236,61 @@ fprintf (stderr, "%d\n", delay);
 	}
 
       // Construct demo.
-      pat_init (&constructor);
-      pos = 0;
-      for (n = 0; n < (recipe [0].total_cost+5)*SHIP_MAGIC_SZ; n++)
+      if (with_demo)
 	{
-	  pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
-	  pos += track->dy;
-	}
-
-      for (n = n_recipe-1; n >= 0; n--)
-	{
-	  int phase = recipe [n].rephase;
-	  while (phase != 0)
+	  pat_init (&constructor);
+	  pos = 0;
+	  for (n = 0; n < (recipe [0].total_cost+5)*SHIP_MAGIC_SZ; n++)
 	    {
-	      pat_add (&constructor, rephaser->pats [0].X, pos+rephaser->pats [0].Y, rephaser->pats [0].pat);
-	      pos += rephaser->dy;
-	      phase = (LANES + phase - rephaser->lane_adjust) % LANES;
+	      pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
+	      pos += track->dy;
 	    }
 
-	  pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
-	  pos += track->dy;
-
-	  part *p = recipe [n].p;
-	  target *pt = &p->pats [period - recipe [n].delay];
-	  pat_add (&constructor, pt->X, pos+pt->Y, pt->pat);
-
-	  if (n == n_recipe-1)
+	  for (n = n_recipe-1; n >= 0; n--)
 	    {
-	      int tgtX = p->fireX     + (period*bullets [0].dx/bullets [0].dt) - bullets [0].base_x - (recipe [n].lane*bullets [0].lane_dx) + tgt.X-tgt.left;
-	      int tgtY = pos+p->fireY + (period*bullets [0].dy/bullets [0].dt) - bullets [0].base_y - (recipe [n].lane*bullets [0].lane_dy) + tgt.Y-tgt.bottom;
-	      for (; tgtY > 0; tgtY += DY)
-	        pat_add (&constructor, tgtX, tgtY, tgt.pat);
+	      int phase = recipe [n].rephase;
+	      while (phase != 0)
+		{
+		  pat_add (&constructor, rephaser->pats [0].X, pos+rephaser->pats [0].Y, rephaser->pats [0].pat);
+		  pos += rephaser->dy;
+		  phase = (LANES + phase - rephaser->lane_adjust) % LANES;
+		}
+
+	      pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
+	      pos += track->dy;
+
+	      part *p = recipe [n].p;
+	      target *pt = &p->pats [period - recipe [n].delay];
+	      pat_add (&constructor, pt->X, pos+pt->Y, pt->pat);
+
+	      if (n == n_recipe-1)
+		{
+		  db_target_reload (&tgt, first->tId, 0);
+		  int tgtX = p->fireX     + (period*bullets [0].dx/bullets [0].dt) - bullets [0].base_x - (recipe [n].lane*bullets [0].lane_dx) + tgt.X-tgt.left;
+		  int tgtY = pos+p->fireY + (period*bullets [0].dy/bullets [0].dt) - bullets [0].base_y - (recipe [n].lane*bullets [0].lane_dy) + tgt.Y-tgt.bottom;
+		  for (; tgtY > 0; tgtY += DY)
+		    pat_add (&constructor, tgtX, tgtY, tgt.pat);
+		}
+
+	      pos += p->dy;
+    /*
+	      pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
+	      pos += track->dy;
+	      pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
+	      pos += track->dy;
+    */
 	    }
 
-	  pos += p->dy;
-/*
-	  pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
-	  pos += track->dy;
-	  pat_add (&constructor, track->pats [0].X, pos+track->pats [0].Y, track->pats [0].pat);
-	  pos += track->dy;
-*/
+	  // ... and show it.
+	  pat_dump (&constructor, false);
+	  stampY += 1000UL * (2UL + (unsigned long)pos / 1000UL);
 	}
-
-      // ... and show it.
-      pat_dump (&constructor, false);
-      stampY += 1000UL * (2UL + (unsigned long)pos / 1000UL);
+      else
+	{
+	  db_target_reload (&tgt, recipe [0].tId, recipe [0].iPhase);
+	  tgt_collide (&tgt, &bullets [0], recipe [0].lane, &dummy, &dummy, &dummy, &dummy);
+	  pat_dump (&lab [0], false);
+	  stampY += 200;
+	}
     }
 }
