@@ -290,6 +290,7 @@ main (int argc, char **argv)
 	  db_target_reload (&tgt, recipe [0].tId, recipe [0].iPhase);
 	  tgt_collide (&tgt, &bullets [0], recipe [0].lane, &dummy, &dummy, &dummy, &dummy);
 	  pat_dump (&lab [0], false);
+	  printf ("\n");
 	  stampY += 200;
 	}
     }
