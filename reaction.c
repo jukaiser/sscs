@@ -440,7 +440,7 @@ bool run (reaction *r, target *tgt, result *res)
 void handle (reaction *r)
 
 {
-  result res = {0ULL, 0, 0, 0, 0, 0, 0, false, rt_undef};
+  result res = {0ULL, 0, 0, 0, 0, 0, false, rt_undef};
 
   target tgt;
   bool   re_fly = false;
@@ -558,6 +558,6 @@ void init_reactions (void)
 
   calc_transitions (0, 0);
 
-  // for (l = 0; l < LANES; l++)
-    // printf ("dLane = %d: cost=%d, firing=%s, state=%d\n", l, t_table [l].cost, parts [t_table [l].fire].name, t_table [l].d_state);
+  for (l = 0; l < LANES; l++)
+    printf ("dLane = %d: cost=%d, firing=%s, state=%d\n", l, t_table [l].cost, parts [t_table [l].fire].name, t_table [l].d_state);
 }
